@@ -2,6 +2,14 @@
 icondir = $(datadir)/icons/hicolor/22x22/apps
 
 icon_DATA = \
+	connman-type-none.png \
+	connman-type-wired.png \
+	connman-type-adhoc.png \
+	connman-signal-01.png \
+	connman-signal-02.png \
+	connman-signal-03.png \
+	connman-signal-04.png \
+	connman-signal-05.png \
 	connman-detect-01.png \
 	connman-detect-02.png \
 	connman-detect-03.png \
