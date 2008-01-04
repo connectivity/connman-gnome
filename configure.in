@@ -39,4 +39,5 @@ PKG_CHECK_MODULES(GTK, gtk+-2.0 >= 2.12, dummy=yes,
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 
-AC_OUTPUT(Makefile applet/Makefile icons/Makefile po/Makefile.in)
+AC_OUTPUT(Makefile applet/Makefile properties/Makefile
+					icons/Makefile po/Makefile.in)

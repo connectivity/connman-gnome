@@ -1,0 +1,16 @@
+
+bin_PROGRAMS = connman-properties
+
+connman_properties_SOURCES = main.c
+
+connman_properties_LDADD = @GTK_LIBS@ @DBUS_LIBS@
+
+if MAINTAINER_MODE
+icondir = $(abs_top_srcdir)/icons
+else
+icondir = $(datadir)/icons/hicolor/22x22/apps
+endif
+
+AM_CFLAGS = @DBUS_CFLAGS@ @GTK_CFLAGS@ -DICONDIR=\""$(icondir)"\"
+
+MAINTAINERCLEANFILES = Makefile.in

@@ -82,12 +82,25 @@ static void about_callback(GtkWidget *item, gpointer user_data)
 	gtk_widget_show_all(dialog);
 }
 
+static void settings_callback(GObject *widget, gpointer user_data)
+{
+	const char *command = "connman-properties";
+
+	if (g_spawn_command_line_async(command, NULL) == FALSE)
+		g_printerr("Couldn't execute command: %s\n", command);
+}
+
 static GtkWidget *create_popupmenu(void)
 {
 	GtkWidget *menu;
 	GtkWidget *item;
 
 	menu = gtk_menu_new();
+
+	item = gtk_image_menu_item_new_from_stock(GTK_STOCK_PREFERENCES, NULL);
+	g_signal_connect(item, "activate", G_CALLBACK(settings_callback), NULL);
+	gtk_widget_show(item);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
 
 	item = gtk_image_menu_item_new_from_stock(GTK_STOCK_ABOUT, NULL);
 	g_signal_connect(item, "activate", G_CALLBACK(about_callback), NULL);
