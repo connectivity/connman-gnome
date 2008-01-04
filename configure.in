@@ -29,4 +29,14 @@ AC_DEFINE_UNQUOTED(GETTEXT_PACKAGE, "$GETTEXT_PACKAGE",
 AM_GLIB_GNU_GETTEXT
 IT_PROG_INTLTOOL([0.35.0])
 
-AC_OUTPUT(Makefile icons/Makefile po/Makefile.in)
+PKG_CHECK_MODULES(DBUS, dbus-glib-1 >= 0.70, dummy=yes,
+				AC_MSG_ERROR(dbus-glib > = 0.70 is required))
+AC_SUBST(DBUS_CFLAGS)
+AC_SUBST(DBUS_LIBS)
+
+PKG_CHECK_MODULES(GTK, gtk+-2.0 >= 2.12, dummy=yes,
+				AC_MSG_ERROR(gtk+ >= 2.12 is required))
+AC_SUBST(GTK_CFLAGS)
+AC_SUBST(GTK_LIBS)
+
+AC_OUTPUT(Makefile applet/Makefile icons/Makefile po/Makefile.in)
