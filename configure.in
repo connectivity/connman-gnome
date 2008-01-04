@@ -1,0 +1,32 @@
+AC_PREREQ(2.50)
+AC_INIT()
+
+AM_INIT_AUTOMAKE(connman-gnome, 0.0)
+AM_CONFIG_HEADER(config.h)
+
+AM_MAINTAINER_MODE
+
+AC_PREFIX_DEFAULT(/usr/local)
+
+if (test "${CFLAGS}" = ""); then
+	CFLAGS="-Wall -O2"
+fi
+
+AC_DEFINE_UNQUOTED(LOCALEDIR, "${prefix}/share/locale",
+				[Directory for the localization files])
+
+AC_LANG_C
+
+AC_PROG_CC
+AC_PROG_CC_PIE
+AC_PROG_INSTALL
+
+GETTEXT_PACKAGE=connman
+AC_SUBST(GETTEXT_PACKAGE)
+AC_DEFINE_UNQUOTED(GETTEXT_PACKAGE, "$GETTEXT_PACKAGE",
+					[The name of the gettext domain])
+
+AM_GLIB_GNU_GETTEXT
+IT_PROG_INTLTOOL([0.35.0])
+
+AC_OUTPUT(Makefile po/Makefile.in)
