@@ -1,2 +1,4 @@
 applet/main.c
+applet/connman-applet.desktop.in
 properties/main.c
+properties/connman-properties.desktop.in
