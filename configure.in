@@ -20,6 +20,7 @@ AC_LANG_C
 AC_PROG_CC
 AC_PROG_CC_PIE
 AC_PROG_INSTALL
+AC_PROG_RANLIB
 
 GETTEXT_PACKAGE=connman
 AC_SUBST(GETTEXT_PACKAGE)
@@ -39,5 +40,5 @@ PKG_CHECK_MODULES(GTK, gtk+-2.0 >= 2.12, dummy=yes,
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 
-AC_OUTPUT(Makefile applet/Makefile properties/Makefile
+AC_OUTPUT(Makefile common/Makefile applet/Makefile properties/Makefile
 					icons/Makefile po/Makefile.in)
