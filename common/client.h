@@ -71,6 +71,9 @@ void client_cleanup(void);
 
 void client_set_userdata(const gchar *index, gpointer user_data);
 
+typedef void (* client_state_callback) (guint state, gint signal);
+void client_set_state_callback(client_state_callback callback);
+
 GtkTreeModel *client_get_model(void);
 GtkTreeModel *client_get_active_model(void);
 

@@ -42,6 +42,62 @@
 
 static GtkTreeStore *store = NULL;
 
+static client_state_callback state_callback = NULL;
+static guint current_state = CLIENT_STATE_UNKNOWN;
+static gint current_signal = -1;
+
+static void execute_state_callback(void)
+{
+	GtkTreeModel *model = GTK_TREE_MODEL(store);
+	GtkTreeIter iter;
+	gboolean cont;
+	guint new_state = CLIENT_STATE_UNKNOWN;
+	gint new_signal = -1;
+
+	if (state_callback == NULL)
+		return;
+
+	cont = gtk_tree_model_get_iter_first(model, &iter);
+
+	while (cont == TRUE) {
+		gboolean active;
+		guint type, state, signal;
+
+		gtk_tree_model_get(model, &iter,
+					CLIENT_COLUMN_ACTIVE, &active,
+					CLIENT_COLUMN_TYPE, &type,
+					CLIENT_COLUMN_STATE, &state,
+					CLIENT_COLUMN_SIGNAL, &signal, -1);
+
+		if (active == TRUE) {
+			switch (new_state) {
+			case CLIENT_STATE_ENABLED:
+			case CLIENT_STATE_CARRIER:
+			case CLIENT_STATE_READY:
+				break;
+			default:
+				new_state = state;
+				break;
+			}
+
+			switch (type) {
+			case CLIENT_TYPE_80211:
+				if ((gint) signal > new_signal)
+					new_signal = signal;
+				break;
+			}
+		}
+
+		cont = gtk_tree_model_iter_next(model, &iter);
+	}
+
+	if (current_state != new_state || current_signal != new_signal) {
+		current_state = new_state;
+		current_signal = new_signal;
+		state_callback(new_state, new_signal);
+	}
+}
+
 static guint string_to_type(const char *type)
 {
 	if (g_ascii_strcasecmp(type, "80203") == 0)
@@ -258,6 +314,8 @@ static void properties_notify(DBusGProxy *object,
 					CLIENT_COLUMN_STATE, state,
 					CLIENT_COLUMN_SIGNAL, signal,
 					CLIENT_COLUMN_POLICY, policy, -1);
+
+	execute_state_callback();
 }
 
 static void update_interface(DBusGProxy *proxy,
@@ -291,6 +349,8 @@ static void state_changed(DBusGProxy *system, const char *state,
 
 	gtk_tree_store_set(store, &iter, CLIENT_COLUMN_STATE,
 						string_to_state(state), -1);
+
+	execute_state_callback();
 }
 
 static void signal_changed(DBusGProxy *system, unsigned int signal,
@@ -304,6 +364,8 @@ static void signal_changed(DBusGProxy *system, unsigned int signal,
 		return;
 
 	gtk_tree_store_set(store, &iter, CLIENT_COLUMN_SIGNAL, signal, -1);
+
+	execute_state_callback();
 }
 
 static void policy_changed(DBusGProxy *system, const char *policy,
@@ -362,7 +424,9 @@ static void add_interface(DBusGProxy *manager, const char *path)
 
 		if (strcmp(object_path, path) == 0) {
 			gtk_tree_store_set(store, &iter,
-					CLIENT_COLUMN_ACTIVE, TRUE, -1);
+					CLIENT_COLUMN_ACTIVE, TRUE,
+					CLIENT_COLUMN_STATE,
+						CLIENT_STATE_UNKNOWN, -1);
 			update_interface(proxy, model, &iter);
 			return;
 		}
@@ -374,7 +438,9 @@ static void add_interface(DBusGProxy *manager, const char *path)
 
 	gtk_tree_store_insert_with_values(store, &iter, NULL, -1,
 					CLIENT_COLUMN_ACTIVE, TRUE,
-					CLIENT_COLUMN_PROXY, proxy, -1);
+					CLIENT_COLUMN_PROXY, proxy,
+					CLIENT_COLUMN_STATE,
+						CLIENT_STATE_UNKNOWN, -1);
 
 	index = gtk_tree_model_get_string_from_iter(model, &iter);
 
@@ -417,6 +483,8 @@ static void interface_added(DBusGProxy *manager, const char *path,
 							gpointer user_data)
 {
 	add_interface(manager, path);
+
+	execute_state_callback();
 }
 
 static gboolean disable_interface(GtkTreeModel *model, GtkTreePath *path,
@@ -453,6 +521,8 @@ static void interface_removed(DBusGProxy *manager, const char *path,
 {
 	gtk_tree_model_foreach(GTK_TREE_MODEL(store),
 					disable_interface, (gpointer) path);
+
+	execute_state_callback();
 }
 
 static DBusGProxy *create_manager(DBusGConnection *conn)
@@ -499,6 +569,8 @@ static void name_owner_changed(DBusGProxy *system, const char *name,
 	if (strcmp(name, CONNMAN_SERVICE) == 0 && *new == '\0')
 		gtk_tree_model_foreach(GTK_TREE_MODEL(store),
 						disable_interface, NULL);
+
+	execute_state_callback();
 }
 
 static DBusGProxy *create_system(DBusGConnection *conn)
@@ -564,6 +636,13 @@ void client_set_userdata(const gchar *index, gpointer user_data)
 
 	gtk_tree_store_set(store, &iter, CLIENT_COLUMN_USERDATA,
 							user_data, -1);
+}
+
+void client_set_state_callback(client_state_callback callback)
+{
+	state_callback = callback;
+
+	execute_state_callback();
 }
 
 GtkTreeModel *client_get_model(void)
