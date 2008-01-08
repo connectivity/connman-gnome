@@ -27,63 +27,71 @@
 #include <string.h>
 #include <signal.h>
 
-#include <dbus/dbus-glib.h>
-
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 
-#ifndef DBYS_TYPE_G_OBJECT_PATH_ARRAY
-#define DBUS_TYPE_G_OBJECT_PATH_ARRAY \
-	(dbus_g_type_get_collection("GPtrArray", DBUS_TYPE_G_OBJECT_PATH))
-#endif
+#include "client.h"
+#include "helper.h"
 
-static GtkListStore *interface_store;
-
-enum {
-	COLUMN_PROXY,
-	COLUMN_PATH,
-	COLUMN_TYPE,
-	COLUMN_STATE,
-};
-
-enum {
-	TYPE_UNKNOWN,
-	TYPE_80203,
-	TYPE_80211,
-};
+static GtkWidget *interface_notebook;
 
 static void state_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
 	guint state;
 
-	gtk_tree_model_get(model, iter, COLUMN_STATE, &state, -1);
+	gtk_tree_model_get(model, iter, CLIENT_COLUMN_STATE, &state, -1);
 
-	g_object_set(cell, "icon-name", GTK_STOCK_NO, NULL);
+	switch (state) {
+	case CLIENT_STATE_OFF:
+	case CLIENT_STATE_CARRIER:
+		g_object_set(cell, "icon-name", GTK_STOCK_NO, NULL);
+		break;
+	case CLIENT_STATE_READY:
+		g_object_set(cell, "icon-name", GTK_STOCK_YES, NULL);
+		break;
+	default:
+		g_object_set(cell, "icon-name", GTK_STOCK_DIALOG_ERROR, NULL);
+		break;
+	}
 }
 
 static void type_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
-	guint type;
-	gchar *title, *text;
+	guint type, state;
+	gchar *text;
+	const char *title, *info;
 
-	gtk_tree_model_get(model, iter, COLUMN_TYPE, &type, -1);
+	gtk_tree_model_get(model, iter, CLIENT_COLUMN_TYPE, &type,
+					CLIENT_COLUMN_STATE, &state, -1);
 
 	switch (type) {
-	case TYPE_80203:
-		title = "Ethernet";
+	case CLIENT_TYPE_80203:
+		title = N_("Ethernet");
 		break;
-	case TYPE_80211:
-		title = "Wireless";
+	case CLIENT_TYPE_80211:
+		title = N_("Wireless");
 		break;
 	default:
-		title = "Unknown";
+		title = N_("Unknown");
 		break;
 	}
 
-	text = g_strdup_printf("<b>%s</b>\n<small>%s</small>",
-						title, "Not Connected");
+	switch (state) {
+	case CLIENT_STATE_OFF:
+	case CLIENT_STATE_CARRIER:
+		info = N_("Not Connected");
+		break;
+	case CLIENT_STATE_READY:
+		info = N_("Connected");
+		break;
+	default:
+		info = N_("Unknown State");
+		break;
+	}
+
+	text = g_strdup_printf("<b>%s</b>\n<small>%s</small>", title, info);
 
 	g_object_set(cell, "markup", text, NULL);
 
@@ -95,14 +103,14 @@ static void type_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 {
 	guint type;
 
-	gtk_tree_model_get(model, iter, COLUMN_TYPE, &type, -1);
+	gtk_tree_model_get(model, iter, CLIENT_COLUMN_TYPE, &type, -1);
 
 	switch (type) {
-	case TYPE_80203:
+	case CLIENT_TYPE_80203:
 		g_object_set(cell, "icon-name", "network-wired",
 						"stock-size", 5, NULL);
 		break;
-	case TYPE_80211:
+	case CLIENT_TYPE_80211:
 		g_object_set(cell, "icon-name", "network-wireless",
 						"stock-size", 5, NULL);
 		break;
@@ -112,7 +120,33 @@ static void type_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 	}
 }
 
-static GtkWidget *create_interfaces(void)
+static void select_callback(GtkTreeSelection *selection, gpointer user_data)
+{
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	GtkWidget *widget;
+	gboolean selected;
+	guint state;
+
+	selected = gtk_tree_selection_get_selected(selection, &model, &iter);
+
+	if (selected == FALSE) {
+		gtk_widget_hide(interface_notebook);
+		return;
+	}
+
+	gtk_tree_model_get(model, &iter, CLIENT_COLUMN_STATE, &state,
+					CLIENT_COLUMN_USERDATA, &widget, -1);
+
+	if (state == CLIENT_STATE_UNKNOWN) {
+		gtk_widget_hide(interface_notebook);
+		return;
+	}
+
+	gtk_widget_show(interface_notebook);
+}
+
+static GtkWidget *create_interfaces(GtkWidget *window)
 {
 	GtkWidget *mainbox;
 	GtkWidget *hbox;
@@ -120,6 +154,8 @@ static GtkWidget *create_interfaces(void)
 	GtkWidget *tree;
 	GtkCellRenderer *renderer;
 	GtkTreeViewColumn *column;
+	GtkTreeSelection *selection;
+	GtkTreeModel *model;
 
 	mainbox = gtk_vbox_new(FALSE, 18);
 	gtk_container_set_border_width(GTK_CONTAINER(mainbox), 12);
@@ -136,13 +172,13 @@ static GtkWidget *create_interfaces(void)
 
 	tree = gtk_tree_view_new();
 	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(tree), FALSE);
+	gtk_tree_view_set_show_expanders(GTK_TREE_VIEW(tree), FALSE);
 	gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(tree), TRUE);
-	gtk_widget_set_size_request(tree, 160, -1);
+	gtk_widget_set_size_request(tree, 180, -1);
 	gtk_container_add(GTK_CONTAINER(scrolled), tree);
 
 
 	column = gtk_tree_view_column_new();
-	gtk_tree_view_column_set_title(column, "Interface");
 	gtk_tree_view_column_set_expand(column, TRUE);
 	gtk_tree_view_column_set_spacing(column, 4);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(tree), column);
@@ -163,8 +199,26 @@ static GtkWidget *create_interfaces(void)
 						type_to_icon, NULL, NULL);
 
 
-	gtk_tree_view_set_model(GTK_TREE_VIEW(tree),
-					GTK_TREE_MODEL(interface_store));
+	model = client_get_active_model();
+	gtk_tree_view_set_model(GTK_TREE_VIEW(tree), model);
+	g_object_unref(model);
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree));
+	gtk_tree_selection_set_mode(selection, GTK_SELECTION_SINGLE);
+
+	interface_notebook = gtk_notebook_new();
+	gtk_notebook_set_show_tabs(GTK_NOTEBOOK(interface_notebook), FALSE);
+	gtk_notebook_set_show_border(GTK_NOTEBOOK(interface_notebook), FALSE);
+	gtk_widget_set_no_show_all(interface_notebook, TRUE);
+	gtk_box_pack_start(GTK_BOX(hbox), interface_notebook, TRUE, TRUE, 0);
+
+	g_object_set_data(G_OBJECT(interface_notebook),
+						"window", window);
+	g_object_set_data(G_OBJECT(interface_notebook),
+						"selection", selection);
+
+	g_signal_connect(G_OBJECT(selection), "changed",
+					G_CALLBACK(select_callback), window);
 
 	return mainbox;
 }
@@ -198,7 +252,7 @@ static GtkWidget *create_window(void)
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(GTK_WINDOW(window), _("Connection Preferences"));
 	gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
-	gtk_window_set_default_size(GTK_WINDOW(window), 480, 360);
+	gtk_window_set_default_size(GTK_WINDOW(window), 580, 380);
 	g_signal_connect(G_OBJECT(window), "delete-event",
 					G_CALLBACK(delete_callback), NULL);
 
@@ -218,7 +272,7 @@ static GtkWidget *create_window(void)
 	g_signal_connect(G_OBJECT(button), "clicked",
 					G_CALLBACK(close_callback), window);
 
-	widget = create_interfaces();
+	widget = create_interfaces(window);
 	gtk_notebook_prepend_page(GTK_NOTEBOOK(notebook), widget, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook),
 						widget, _("Interfaces"));
@@ -228,97 +282,6 @@ static GtkWidget *create_window(void)
 	return window;
 }
 
-static void add_interface(DBusGConnection *conn, const char *path)
-{
-	DBusGProxy *proxy;
-	GHashTable *hash = NULL;
-	GValue *value;
-	const char *str;
-	guint type;
-
-	proxy = dbus_g_proxy_new_for_name(conn, "org.freedesktop.connman",
-				path, "org.freedesktop.DBus.Properties");
-
-	dbus_g_proxy_call(proxy, "GetAll", NULL,
-			G_TYPE_STRING, "org.freedesktop.connman.Interface",
-			G_TYPE_INVALID,
-				dbus_g_type_get_map("GHashTable",
-						G_TYPE_STRING, G_TYPE_VALUE),
-				&hash, G_TYPE_INVALID);
-
-	if (hash == NULL)
-		goto done;
-
-	value = g_hash_table_lookup(hash, "Type");
-	str = g_value_get_string(value);
-
-	if (g_ascii_strcasecmp(str, "80203") == 0)
-		type = TYPE_80203;
-	else if (g_ascii_strcasecmp(str, "80211") == 0)
-		type = TYPE_80211;
-	else
-		type = TYPE_UNKNOWN;
-
-	gtk_list_store_insert_with_values(interface_store, NULL, -1,
-			COLUMN_PATH, path,
-			COLUMN_TYPE, type, -1);
-
-done:
-	g_object_unref(proxy);
-}
-
-static DBusGProxy *create_manager(DBusGConnection *conn)
-{
-	DBusGProxy *manager;
-	GError *error = NULL;
-	GPtrArray *array = NULL;
-
-	manager = dbus_g_proxy_new_for_name(conn, "org.freedesktop.connman",
-					"/", "org.freedesktop.connman.Manager");
-
-	dbus_g_proxy_call(manager, "ListInterfaces", &error, G_TYPE_INVALID,
-			DBUS_TYPE_G_OBJECT_PATH_ARRAY, &array, G_TYPE_INVALID);
-
-	if (error != NULL) {
-		g_printerr("Getting interface list failed: %s\n",
-							error->message);
-		g_error_free(error);
-	} else {
-		int i;
-
-		for (i = 0; i < array->len; i++) {
-			gchar *path = g_ptr_array_index(array, i);
-			add_interface(conn, path);
-			g_free(path);
-		}
-	}
-
-	return manager;
-}
-
-static void name_owner_changed(DBusGProxy *system, const char *name,
-			const char *prev, const char *new, gpointer user_data)
-{
-	if (!strcmp(name, "org.freedesktop.connman") && *new == '\0') {
-	}
-}
-
-static DBusGProxy *create_system(DBusGConnection *conn)
-{
-	DBusGProxy *system;
-
-	system = dbus_g_proxy_new_for_name(conn, DBUS_SERVICE_DBUS,
-					DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);
-
-	dbus_g_proxy_add_signal(system, "NameOwnerChanged",
-		G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
-
-	dbus_g_proxy_connect_signal(system, "NameOwnerChanged",
-				G_CALLBACK(name_owner_changed), NULL, NULL);
-
-	return system;
-}
-
 static void sig_term(int sig)
 {
 	gtk_main_quit();
@@ -326,9 +289,6 @@ static void sig_term(int sig)
 
 int main(int argc, char *argv[])
 {
-	DBusGConnection *conn;
-	DBusGProxy *system, *manager;
-	GError *error = NULL;
 	struct sigaction sa;
 
 	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
@@ -339,21 +299,9 @@ int main(int argc, char *argv[])
 
 	gtk_window_set_default_icon_name("stock_internet");
 
-	conn = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
-	if (error != NULL) {
-		g_printerr("Connecting to system bus failed: %s\n",
-							error->message);
-		g_error_free(error);
-		exit(EXIT_FAILURE);
-	}
-
-	interface_store = gtk_list_store_new(4, DBUS_TYPE_G_PROXY,
-				G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT);
+	client_init(NULL);
 
 	create_window();
-
-	system = create_system(conn);
-	manager = create_manager(conn);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
@@ -362,10 +310,7 @@ int main(int argc, char *argv[])
 
 	gtk_main();
 
-	g_object_unref(manager);
-	g_object_unref(system);
-
-	dbus_g_connection_unref(conn);
+	client_cleanup();
 
 	return 0;
 }
