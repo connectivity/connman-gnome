@@ -167,6 +167,7 @@ static GtkIconTheme *icontheme;
 static IconAnimation *animation;
 static GdkPixbuf *pixbuf_none;
 static GdkPixbuf *pixbuf_wired;
+static GdkPixbuf *pixbuf_signal[5];
 
 int status_init(GtkWidget *activate, GtkWidget *popup)
 {
@@ -184,6 +185,12 @@ int status_init(GtkWidget *activate, GtkWidget *popup)
 
 	animation = icon_animation_load(icontheme, "connman-connecting", 33);
 
+	pixbuf_signal[0] = pixbuf_load(icontheme, "connman-signal-01");
+	pixbuf_signal[1] = pixbuf_load(icontheme, "connman-signal-02");
+	pixbuf_signal[2] = pixbuf_load(icontheme, "connman-signal-03");
+	pixbuf_signal[3] = pixbuf_load(icontheme, "connman-signal-04");
+	pixbuf_signal[4] = pixbuf_load(icontheme, "connman-signal-05");
+
 	pixbuf_none = pixbuf_load(icontheme, "connman-type-none");
 	pixbuf_wired = pixbuf_load(icontheme, "connman-type-wired");
 
@@ -198,7 +205,12 @@ int status_init(GtkWidget *activate, GtkWidget *popup)
 
 void status_cleanup(void)
 {
+	int i;
+
 	icon_animation_free(animation);
+
+	for (i = 0; i < 5; i++)
+		g_object_unref(pixbuf_signal[i]);
 
 	g_object_unref(pixbuf_none);
 	g_object_unref(pixbuf_wired);
@@ -240,29 +252,59 @@ void status_config(void)
 	icon_animation_start(animation, 11, 21);
 }
 
-static gboolean ready_timeout(gpointer data)
+static void set_ready(gint signal)
 {
-	IconAnimation *animation = data;
+	int index;
 
-	icon_animation_stop(animation);
+	if (signal < 0) {
+		gtk_status_icon_set_from_pixbuf(statusicon, pixbuf_wired);
+		return;
+	}
 
-	gtk_status_icon_set_from_pixbuf(statusicon, pixbuf_wired);
+	if (signal == 0)
+		index = 0;
+	else
+		index = 3;
+
+	gtk_status_icon_set_from_pixbuf(statusicon, pixbuf_signal[index]);
+}
+
+struct timeout_data {
+	IconAnimation *animation;
+	gint signal;
+};
+
+static gboolean ready_timeout(gpointer user_data)
+{
+	struct timeout_data *data = user_data;
+
+	if (data != NULL) {
+		icon_animation_stop(data->animation);
+		set_ready(data->signal);
+		g_free(data);
+	}
 
 	return FALSE;
 }
 
-void status_ready(void)
+void status_ready(gint signal)
 {
 	if (animation->id > 0) {
-		gtk_status_icon_set_visible(statusicon, TRUE);
+		struct timeout_data *data;
 
+		data = g_try_malloc(sizeof(*data));
+		if (data != NULL) {
+			data->animation = animation;
+			data->signal = signal;
+		}
+
+		gtk_status_icon_set_visible(statusicon, TRUE);
 		icon_animation_start(animation, 22, 32);
 
 		g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 1500,
-					ready_timeout, animation, NULL);
+						ready_timeout, data, NULL);
 	} else {
-		gtk_status_icon_set_from_pixbuf(statusicon, pixbuf_wired);
-
+		set_ready(signal);
 		gtk_status_icon_set_visible(statusicon, TRUE);
 	}
 }

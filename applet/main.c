@@ -32,6 +32,7 @@
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 
+#include "client.h"
 #include "status.h"
 
 static void close_callback(GtkWidget *dialog, gpointer user_data)
@@ -110,70 +111,74 @@ static GtkWidget *create_popupmenu(void)
 	return menu;
 }
 
-static void state_changed(DBusGProxy *manager,
-				const char *state, gpointer user_data)
+#if 0
+static GtkWidget *append_menuitem(GtkWidget *menu,
+					const char *ssid, double strength)
 {
-	if (g_ascii_strcasecmp(state, "offline") == 0)
+	GtkWidget *item;
+	GtkWidget *hbox;
+	GtkWidget *label;
+	GtkWidget *progress;
+
+	item = gtk_check_menu_item_new();
+	gtk_check_menu_item_set_draw_as_radio(GTK_CHECK_MENU_ITEM(item), TRUE);
+
+	hbox = gtk_hbox_new(FALSE, 6);
+	gtk_container_add(GTK_CONTAINER(item), hbox);
+	gtk_widget_show(hbox);
+
+	label = gtk_label_new(NULL);
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
+	gtk_label_set_text(GTK_LABEL(label), ssid);
+	gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, TRUE, 0);
+	gtk_widget_show(label);
+
+	progress = gtk_progress_bar_new();
+	gtk_widget_set_size_request(progress, 100, -1);
+	gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress), strength);
+	gtk_box_pack_end(GTK_BOX(hbox), progress, FALSE, TRUE, 0);
+	gtk_widget_show(progress);
+
+	gtk_widget_show(item);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+
+	return item;
+}
+
+static GtkWidget *create_networkmenu(void)
+{
+	GtkWidget *menu;
+	GtkWidget *item;
+
+	menu = gtk_menu_new();
+	item = append_menuitem(menu, "Test network", 0.8);
+	item = append_menuitem(menu, "Company network", 0.5);
+
+	return menu;
+}
+#else
+#define create_networkmenu() NULL
+#endif
+
+static void state_callback(guint state, gint signal)
+{
+	switch (state) {
+	case CLIENT_STATE_OFF:
 		status_offline();
-	else if (g_ascii_strcasecmp(state, "prepare") == 0)
+		break;
+	case CLIENT_STATE_ENABLED:
 		status_prepare();
-	else if (g_ascii_strcasecmp(state, "config") == 0)
+		break;
+	case CLIENT_STATE_CARRIER:
 		status_config();
-	else if (g_ascii_strcasecmp(state, "ready") == 0)
-		status_ready();
-	else
+		break;
+	case CLIENT_STATE_READY:
+		status_ready(signal);
+		break;
+	default:
 		status_hide();
-}
-
-static DBusGProxy *create_manager(DBusGConnection *conn)
-{
-	DBusGProxy *manager;
-	GError *error = NULL;
-	const char *state;
-
-	manager = dbus_g_proxy_new_for_name(conn, "org.freedesktop.connman",
-					"/", "org.freedesktop.connman.Manager");
-
-	dbus_g_proxy_add_signal(manager, "StateChanged",
-					G_TYPE_STRING, G_TYPE_INVALID);
-
-	dbus_g_proxy_connect_signal(manager, "StateChanged",
-					G_CALLBACK(state_changed), NULL, NULL);
-
-	dbus_g_proxy_call(manager, "GetState", &error,
-			G_TYPE_INVALID, G_TYPE_STRING, &state, G_TYPE_INVALID);
-
-	if (error != NULL) {
-		state = "unknown";
-		g_error_free(error);
+		break;
 	}
-
-	state_changed(manager, state, NULL);
-
-	return manager;
-}
-
-static void name_owner_changed(DBusGProxy *system, const char *name,
-			const char *prev, const char *new, gpointer user_data)
-{
-	if (!strcmp(name, "org.freedesktop.connman") && *new == '\0')
-		status_hide();
-}
-
-static DBusGProxy *create_system(DBusGConnection *conn)
-{
-	DBusGProxy *system;
-
-	system = dbus_g_proxy_new_for_name(conn, DBUS_SERVICE_DBUS,
-					DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);
-
-	dbus_g_proxy_add_signal(system, "NameOwnerChanged",
-		G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
-
-	dbus_g_proxy_connect_signal(system, "NameOwnerChanged",
-				G_CALLBACK(name_owner_changed), NULL, NULL);
-
-	return system;
 }
 
 static void sig_term(int sig)
@@ -183,10 +188,7 @@ static void sig_term(int sig)
 
 int main(int argc, char *argv[])
 {
-	DBusGConnection *conn;
-	DBusGProxy *system, *manager;
-	GtkWidget *popup;
-	GError *error = NULL;
+	GtkWidget *activate, *popup;
 	struct sigaction sa;
 
 	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
@@ -197,20 +199,14 @@ int main(int argc, char *argv[])
 
 	gtk_window_set_default_icon_name("stock_internet");
 
-	conn = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
-	if (error != NULL) {
-		g_printerr("Connecting to system bus failed: %s\n",
-							error->message);
-		g_error_free(error);
-		exit(EXIT_FAILURE);
-	}
-
+	activate = create_networkmenu();
 	popup = create_popupmenu();
 
-	status_init(NULL, popup);
+	status_init(activate, popup);
 
-	system = create_system(conn);
-	manager = create_manager(conn);
+	client_init(NULL);
+
+	client_set_state_callback(state_callback);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
@@ -219,12 +215,9 @@ int main(int argc, char *argv[])
 
 	gtk_main();
 
-	g_object_unref(manager);
-	g_object_unref(system);
+	client_cleanup();
 
 	status_cleanup();
-
-	dbus_g_connection_unref(conn);
 
 	return 0;
 }

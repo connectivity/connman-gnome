@@ -26,4 +26,4 @@ void status_hide(void);
 void status_offline(void);
 void status_prepare(void);
 void status_config(void);
-void status_ready(void);
+void status_ready(gint signal);
