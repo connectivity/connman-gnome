@@ -22,6 +22,7 @@
 enum {
 	CLIENT_COLUMN_ACTIVE,
 	CLIENT_COLUMN_PROXY,
+	CLIENT_COLUMN_USERDATA,
 	CLIENT_COLUMN_TYPE,
 	CLIENT_COLUMN_DRIVER,
 	CLIENT_COLUMN_VENDOR,
@@ -43,7 +44,11 @@ enum {
 
 enum {
 	CLIENT_STATE_UNKNOWN,
-	CLIENT_STATE_OFFLINE,
+	CLIENT_STATE_OFF,
+	CLIENT_STATE_ENABLED,
+	CLIENT_STATE_CONNECT,
+	CLIENT_STATE_CONFIG,
+	CLIENT_STATE_CARRIER,
 	CLIENT_STATE_READY,
 };
 
@@ -64,7 +69,10 @@ enum {
 gboolean client_init(GError **error);
 void client_cleanup(void);
 
+void client_set_userdata(const gchar *index, gpointer user_data);
+
 GtkTreeModel *client_get_model(void);
+GtkTreeModel *client_get_active_model(void);
 
 void client_set_policy(const gchar *index, guint policy);
 void client_set_ipv4(const gchar *index, guint method);

@@ -43,8 +43,11 @@ static void state_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 					CLIENT_COLUMN_SIGNAL, &signal, -1);
 
 	switch (state) {
-	case CLIENT_STATE_OFFLINE:
-		str = "Offline";
+	case CLIENT_STATE_OFF:
+		str = "Off";
+		break;
+	case CLIENT_STATE_CARRIER:
+		str = "Carrier";
 		break;
 	case CLIENT_STATE_READY:
 		str = "Ready";
@@ -54,7 +57,7 @@ static void state_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 		break;
 	}
 
-	markup = g_strdup_printf("%s\n<small>%d \%\n%s</small>", str,
+	markup = g_strdup_printf("%s\n<small>%d %%\n%s</small>", str,
 				signal, active == TRUE ? "ON" : "OFF");
 	g_object_set(cell, "markup", markup, NULL);
 	g_free(markup);

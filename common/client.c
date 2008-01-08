@@ -54,8 +54,16 @@ static guint string_to_type(const char *type)
 
 static guint string_to_state(const char *state)
 {
-	if (g_ascii_strcasecmp(state, "offline") == 0)
-		return CLIENT_STATE_OFFLINE;
+	if (g_ascii_strcasecmp(state, "off") == 0)
+		return CLIENT_STATE_OFF;
+	else if (g_ascii_strcasecmp(state, "enabled") == 0)
+		return CLIENT_STATE_ENABLED;
+	else if (g_ascii_strcasecmp(state, "connect") == 0)
+		return CLIENT_STATE_CONNECT;
+	else if (g_ascii_strcasecmp(state, "config") == 0)
+		return CLIENT_STATE_CONFIG;
+	else if (g_ascii_strcasecmp(state, "carrier") == 0)
+		return CLIENT_STATE_CARRIER;
 	else if (g_ascii_strcasecmp(state, "ready") == 0)
 		return CLIENT_STATE_READY;
 	else
@@ -522,8 +530,8 @@ gboolean client_init(GError **error)
 		return FALSE;
 	}
 
-	store = gtk_tree_store_new(13, G_TYPE_BOOLEAN, DBUS_TYPE_G_PROXY,
-						G_TYPE_UINT, G_TYPE_STRING,
+	store = gtk_tree_store_new(14, G_TYPE_BOOLEAN, DBUS_TYPE_G_PROXY,
+				G_TYPE_POINTER, G_TYPE_UINT, G_TYPE_STRING,
 				G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT,
 				G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT,
 				G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
@@ -546,9 +554,32 @@ void client_cleanup(void)
 	dbus_g_connection_unref(connection);
 }
 
+void client_set_userdata(const gchar *index, gpointer user_data)
+{
+	GtkTreeModel *model = GTK_TREE_MODEL(store);
+	GtkTreeIter iter;
+
+	if (gtk_tree_model_get_iter_from_string(model, &iter, index) == FALSE)
+		return;
+
+	gtk_tree_store_set(store, &iter, CLIENT_COLUMN_USERDATA,
+							user_data, -1);
+}
+
 GtkTreeModel *client_get_model(void)
 {
 	return gtk_tree_model_filter_new(GTK_TREE_MODEL(store), NULL);
+}
+
+GtkTreeModel *client_get_active_model(void)
+{
+	GtkTreeModel *model;
+
+	model = gtk_tree_model_filter_new(GTK_TREE_MODEL(store), NULL);
+	gtk_tree_model_filter_set_visible_column(GTK_TREE_MODEL_FILTER(model),
+							CLIENT_COLUMN_ACTIVE);
+
+	return model;
 }
 
 void client_set_policy(const gchar *index, guint policy)
