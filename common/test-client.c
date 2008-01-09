@@ -121,6 +121,12 @@ static void policy_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 	g_free(markup);
 }
 
+static void network_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
+			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
+{
+	g_object_set(cell, "markup", "", NULL);
+}
+
 static void ipv4_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
@@ -210,6 +216,10 @@ static GtkWidget *create_tree(void)
 	gtk_tree_view_insert_column_with_data_func(GTK_TREE_VIEW(tree), -1,
 				"Policy", gtk_cell_renderer_text_new(),
 					policy_to_text, NULL, NULL);
+
+	gtk_tree_view_insert_column_with_data_func(GTK_TREE_VIEW(tree), -1,
+				"Network", gtk_cell_renderer_text_new(),
+					network_to_text, NULL, NULL);\
 
 	gtk_tree_view_insert_column_with_data_func(GTK_TREE_VIEW(tree), -1,
 				"IPv4", gtk_cell_renderer_text_new(),
@@ -310,6 +320,31 @@ static void static_callback(GtkWidget *button, gpointer user_data)
 	client_set_ipv4(index, CLIENT_IPV4_METHOD_STATIC);
 }
 
+static void network_callback(GtkWidget *button, gpointer user_data)
+{
+	GtkTreeSelection *selection = user_data;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	GtkWidget *widget;
+	gchar *index, *network;
+
+	if (gtk_tree_selection_get_selected(selection,
+						&model, &iter) == FALSE)
+		return;
+
+	index = gtk_tree_model_get_string_from_iter(model, &iter);
+
+	widget = g_object_get_data(G_OBJECT(selection), "network");
+	if (widget == NULL)
+		return;
+
+	network = gtk_combo_box_get_active_text(GTK_COMBO_BOX(widget));
+
+	//client_set_network(index, network);
+
+	g_free(network);
+}
+
 static void delete_callback(GtkWidget *window, GdkEvent *event,
 							gpointer user_data)
 {
@@ -330,12 +365,14 @@ static void close_callback(GtkWidget *button, gpointer user_data)
 static GtkWidget *create_window(void)
 {
 	GtkWidget *window;
-	GtkWidget *vbox;
+	GtkWidget *mainbox;
 	GtkWidget *hbox;
+	GtkWidget *vbox;
 	GtkWidget *tree;
 	GtkWidget *scrolled;
 	GtkWidget *buttonbox;
 	GtkWidget *button;
+	GtkWidget *combo;
 	GtkTreeSelection *selection;
 
 	tree = create_tree();
@@ -344,16 +381,23 @@ static GtkWidget *create_window(void)
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(GTK_WINDOW(window), "Client Test");
 	gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
-	gtk_window_set_default_size(GTK_WINDOW(window), 640, 320);
+	gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
 	g_signal_connect(G_OBJECT(window), "delete-event",
 					G_CALLBACK(delete_callback), NULL);
 
-	vbox = gtk_vbox_new(FALSE, 12);
-	gtk_container_set_border_width(GTK_CONTAINER(vbox), 12);
-	gtk_container_add(GTK_CONTAINER(window), vbox);
+	mainbox = gtk_vbox_new(FALSE, 12);
+	gtk_container_set_border_width(GTK_CONTAINER(mainbox), 12);
+	gtk_container_add(GTK_CONTAINER(window), mainbox);
+
+	scrolled = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled),
+				GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolled),
+							GTK_SHADOW_OUT);
+	gtk_box_pack_start(GTK_BOX(mainbox), scrolled, TRUE, TRUE, 0);
 
 	hbox = gtk_hbox_new(FALSE, 8);
-	gtk_container_add(GTK_CONTAINER(vbox), hbox);
+	gtk_box_pack_start(GTK_BOX(mainbox), hbox, FALSE, FALSE, 0);
 
 	buttonbox = gtk_vbutton_box_new();
 	gtk_button_box_set_layout(GTK_BUTTON_BOX(buttonbox),
@@ -375,6 +419,11 @@ static GtkWidget *create_window(void)
 	g_signal_connect(G_OBJECT(button), "clicked",
 				G_CALLBACK(policy_auto), selection);
 
+	buttonbox = gtk_vbutton_box_new();
+	gtk_button_box_set_layout(GTK_BUTTON_BOX(buttonbox),
+						GTK_BUTTONBOX_START);
+	gtk_box_pack_start(GTK_BOX(hbox), buttonbox, FALSE, FALSE, 0);
+
 	button = gtk_button_new_with_label("DHCP");
 	gtk_container_add(GTK_CONTAINER(buttonbox), button);
 	g_signal_connect(G_OBJECT(button), "clicked",
@@ -385,17 +434,23 @@ static GtkWidget *create_window(void)
 	g_signal_connect(G_OBJECT(button), "clicked",
 				G_CALLBACK(static_callback), selection);
 
-	scrolled = gtk_scrolled_window_new(NULL, NULL);
-	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled),
-				GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolled),
-							GTK_SHADOW_OUT);
-	gtk_box_pack_start(GTK_BOX(hbox), scrolled, TRUE, TRUE, 0);
+	vbox = gtk_vbox_new(FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(hbox), vbox, FALSE, FALSE, 0);
+
+	combo = gtk_combo_box_entry_new_text();
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Guest");
+	gtk_box_pack_start(GTK_BOX(vbox), combo, FALSE, FALSE, 0);
+	g_object_set_data(G_OBJECT(selection), "network", combo);
+
+	button = gtk_button_new_with_label("Set Network");
+	gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+	g_signal_connect(G_OBJECT(button), "clicked",
+				G_CALLBACK(network_callback), selection);
 
 	buttonbox = gtk_hbutton_box_new();
 	gtk_button_box_set_layout(GTK_BUTTON_BOX(buttonbox),
 						GTK_BUTTONBOX_END);
-	gtk_box_pack_start(GTK_BOX(vbox), buttonbox, FALSE, FALSE, 0);
+	gtk_box_pack_end(GTK_BOX(mainbox), buttonbox, FALSE, FALSE, 0);
 
 	button = gtk_button_new_from_stock(GTK_STOCK_CLOSE);
 	gtk_container_add(GTK_CONTAINER(buttonbox), button);
