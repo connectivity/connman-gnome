@@ -244,7 +244,8 @@ static void ipv4_notify(DBusGProxy *object,
 	handle_ipv4(hash, &iter);
 }
 
-static void handle_network(GHashTable *hash, GtkTreeIter *iter)
+static void handle_network(GHashTable *hash,
+				GtkTreeIter *iter, gboolean secrets)
 {
 	GValue *value;
 	const char *str;
@@ -261,7 +262,10 @@ static void handle_network(GHashTable *hash, GtkTreeIter *iter)
 		str = g_value_get_string(value);
 		gtk_tree_store_set(store, iter,
 					CLIENT_COLUMN_NETWORK_PSK, str, -1);
-	}
+	} else if (secrets == TRUE)
+		gtk_tree_store_set(store, iter,
+					CLIENT_COLUMN_NETWORK_PSK, NULL, -1);
+		
 }
 
 static void network_notify(DBusGProxy *object,
@@ -291,7 +295,7 @@ static void network_notify(DBusGProxy *object,
 							user_data) == FALSE)
 		return;
 
-	handle_network(hash, &iter);
+	handle_network(hash, &iter, TRUE);
 }
 
 static void properties_notify(DBusGProxy *object,
@@ -452,7 +456,7 @@ static void network_changed(DBusGProxy *proxy, GHashTable *hash,
 							user_data) == FALSE)
 		return;
 
-	handle_network(hash, &iter);
+	handle_network(hash, &iter, FALSE);
 
 	index = gtk_tree_model_get_string_from_iter(model, &iter);
 
