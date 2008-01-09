@@ -80,11 +80,13 @@ static void execute_state_callback(void)
 				break;
 			}
 
-			switch (type) {
-			case CLIENT_TYPE_80211:
-				if ((gint) signal > new_signal)
-					new_signal = signal;
-				break;
+			if (state == CLIENT_STATE_READY) {
+				switch (type) {
+				case CLIENT_TYPE_80211:
+					if ((gint) signal > new_signal)
+						new_signal = signal;
+					break;
+				}
 			}
 		}
 
