@@ -131,7 +131,7 @@ static void network_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 
 	if (essid != NULL)
 		markup = g_strdup_printf("%s\n<small>PSK: %s\n</small>",
-					essid, psk ? "Yes" : "No");
+				essid, psk && *psk != '\0' ? "Yes" : "No");
 	else
 		markup = g_strdup_printf("\n<small>\n</small>");
 	g_object_set(cell, "markup", markup, NULL);
