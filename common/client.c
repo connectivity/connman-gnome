@@ -242,6 +242,56 @@ static void ipv4_notify(DBusGProxy *object,
 	handle_ipv4(hash, &iter);
 }
 
+static void handle_network(GHashTable *hash, GtkTreeIter *iter)
+{
+	GValue *value;
+	const char *str;
+
+	value = g_hash_table_lookup(hash, "ESSID");
+	if (value != NULL) {
+		str = g_value_get_string(value);
+		gtk_tree_store_set(store, iter,
+					CLIENT_COLUMN_NETWORK_ESSID, str, -1);
+	}
+
+	value = g_hash_table_lookup(hash, "PSK");
+	if (value != NULL) {
+		str = g_value_get_string(value);
+		gtk_tree_store_set(store, iter,
+					CLIENT_COLUMN_NETWORK_PSK, str, -1);
+	}
+}
+
+static void network_notify(DBusGProxy *object,
+				DBusGProxyCall *call, void *user_data)
+{
+	GtkTreeModel *model = GTK_TREE_MODEL(store);
+	GtkTreeIter iter;
+	GError *error = NULL;
+	GHashTable *hash = NULL;
+
+	dbus_g_proxy_end_call(object, call, &error,
+				dbus_g_type_get_map("GHashTable",
+						G_TYPE_STRING, G_TYPE_VALUE),
+				&hash, G_TYPE_INVALID);
+
+	if (error != NULL) {
+		g_printerr("Getting interface network failed: %s\n",
+							error->message);
+		g_error_free(error);
+		return;
+	}
+
+	if (hash == NULL)
+		return;
+
+	if (gtk_tree_model_get_iter_from_string(model, &iter,
+							user_data) == FALSE)
+		return;
+
+	handle_network(hash, &iter);
+}
+
 static void properties_notify(DBusGProxy *object,
 				DBusGProxyCall *call, void *user_data)
 {
@@ -333,11 +383,17 @@ static void update_interface(DBusGProxy *proxy,
 	index = gtk_tree_model_get_string_from_iter(model, iter);
 
 	call = dbus_g_proxy_begin_call_with_timeout(proxy,
+					"GetNetwork", network_notify,
+					index, g_free, 2000, G_TYPE_INVALID);
+
+	index = gtk_tree_model_get_string_from_iter(model, iter);
+
+	call = dbus_g_proxy_begin_call_with_timeout(proxy,
 					"GetIPv4", ipv4_notify,
 					index, g_free, 2000, G_TYPE_INVALID);
 }
 
-static void state_changed(DBusGProxy *system, const char *state,
+static void state_changed(DBusGProxy *proxy, const char *state,
 							gpointer user_data)
 {
 	GtkTreeModel *model = GTK_TREE_MODEL(store);
@@ -353,7 +409,7 @@ static void state_changed(DBusGProxy *system, const char *state,
 	execute_state_callback();
 }
 
-static void signal_changed(DBusGProxy *system, unsigned int signal,
+static void signal_changed(DBusGProxy *proxy, unsigned int signal,
 							gpointer user_data)
 {
 	GtkTreeModel *model = GTK_TREE_MODEL(store);
@@ -368,7 +424,7 @@ static void signal_changed(DBusGProxy *system, unsigned int signal,
 	execute_state_callback();
 }
 
-static void policy_changed(DBusGProxy *system, const char *policy,
+static void policy_changed(DBusGProxy *proxy, const char *policy,
 							gpointer user_data)
 {
 	GtkTreeModel *model = GTK_TREE_MODEL(store);
@@ -380,6 +436,27 @@ static void policy_changed(DBusGProxy *system, const char *policy,
 
 	gtk_tree_store_set(store, &iter, CLIENT_COLUMN_POLICY,
 						string_to_policy(policy), -1);
+}
+
+static void network_changed(DBusGProxy *proxy, GHashTable *hash,
+							gpointer user_data)
+{
+	GtkTreeModel *model = GTK_TREE_MODEL(store);
+	GtkTreeIter iter;
+	DBusGProxyCall *call;
+	gchar *index;
+
+	if (gtk_tree_model_get_iter_from_string(model, &iter,
+							user_data) == FALSE)
+		return;
+
+	handle_network(hash, &iter);
+
+	index = gtk_tree_model_get_string_from_iter(model, &iter);
+
+	call = dbus_g_proxy_begin_call_with_timeout(proxy,
+					"GetNetwork", network_notify,
+					index, g_free, 2000, G_TYPE_INVALID);
 }
 
 static void ipv4_changed(DBusGProxy *system, GHashTable *hash,
@@ -465,6 +542,16 @@ static void add_interface(DBusGProxy *manager, const char *path)
 
 	dbus_g_proxy_connect_signal(proxy, "PolicyChanged",
 			G_CALLBACK(policy_changed), index, signal_closure);
+
+	index = gtk_tree_model_get_string_from_iter(model, &iter);
+
+	dbus_g_proxy_add_signal(proxy, "NetworkChanged",
+				dbus_g_type_get_map("GHashTable",
+					G_TYPE_STRING, G_TYPE_VALUE),
+							G_TYPE_INVALID);
+
+	dbus_g_proxy_connect_signal(proxy, "NetworkChanged",
+			G_CALLBACK(network_changed), index, signal_closure);
 
 	index = gtk_tree_model_get_string_from_iter(model, &iter);
 
@@ -602,11 +689,12 @@ gboolean client_init(GError **error)
 		return FALSE;
 	}
 
-	store = gtk_tree_store_new(14, G_TYPE_BOOLEAN, DBUS_TYPE_G_PROXY,
+	store = gtk_tree_store_new(16, G_TYPE_BOOLEAN, DBUS_TYPE_G_PROXY,
 				G_TYPE_POINTER, G_TYPE_UINT, G_TYPE_STRING,
 				G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT,
-				G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT,
-				G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
+				G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING,
+				G_TYPE_STRING, G_TYPE_UINT, G_TYPE_STRING,
+						G_TYPE_STRING, G_TYPE_STRING);
 
 	system = create_system(connection);
 
@@ -707,9 +795,48 @@ void client_set_ipv4(const gchar *index, guint method)
 	value = g_new0(GValue, 1);
 	g_value_init(value, G_TYPE_STRING);
 	g_value_set_string(value, ipv4_method_to_string(method));
-	g_hash_table_insert(hash, g_strdup ("Method"), value);
+	g_hash_table_insert(hash, g_strdup("Method"), value);
 
 	dbus_g_proxy_call_no_reply(proxy, "SetIPv4",
+					dbus_g_type_get_map("GHashTable",
+						G_TYPE_STRING, G_TYPE_VALUE),
+					hash, G_TYPE_INVALID);
+
+	g_object_unref(proxy);
+}
+
+void client_set_network(const gchar *index, const gchar *network,
+						const gchar *passphrase)
+{
+	GtkTreeModel *model = GTK_TREE_MODEL(store);
+	GtkTreeIter iter;
+	DBusGProxy *proxy;
+	GHashTable *hash = NULL;
+	GValue *value;
+
+	if (gtk_tree_model_get_iter_from_string(model, &iter, index) == FALSE)
+		return;
+
+	gtk_tree_model_get(model, &iter, CLIENT_COLUMN_PROXY, &proxy, -1);
+	if (proxy == NULL)
+		return;
+
+	hash = g_hash_table_new_full(g_str_hash, g_str_equal,
+					g_free, (GDestroyNotify) value_free);
+
+	value = g_new0(GValue, 1);
+	g_value_init(value, G_TYPE_STRING);
+	g_value_set_string(value, network);
+	g_hash_table_insert(hash, g_strdup("ESSID"), value);
+
+	if (passphrase != NULL) {
+		value = g_new0(GValue, 1);
+		g_value_init(value, G_TYPE_STRING);
+		g_value_set_string(value, passphrase);
+		g_hash_table_insert(hash, g_strdup("PSK"), value);
+	}
+
+	dbus_g_proxy_call_no_reply(proxy, "SetNetwork",
 					dbus_g_type_get_map("GHashTable",
 						G_TYPE_STRING, G_TYPE_VALUE),
 					hash, G_TYPE_INVALID);

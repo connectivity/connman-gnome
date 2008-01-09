@@ -30,6 +30,8 @@ enum {
 	CLIENT_COLUMN_STATE,
 	CLIENT_COLUMN_SIGNAL,
 	CLIENT_COLUMN_POLICY,
+	CLIENT_COLUMN_NETWORK_ESSID,
+	CLIENT_COLUMN_NETWORK_PSK,
 	CLIENT_COLUMN_IPV4_METHOD,
 	CLIENT_COLUMN_IPV4_ADDRESS,
 	CLIENT_COLUMN_IPV4_NETMASK,
@@ -79,3 +81,5 @@ GtkTreeModel *client_get_active_model(void);
 
 void client_set_policy(const gchar *index, guint policy);
 void client_set_ipv4(const gchar *index, guint method);
+void client_set_network(const gchar *index, const gchar *network,
+						const gchar *passphrase);

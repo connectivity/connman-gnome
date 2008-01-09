@@ -124,7 +124,21 @@ static void policy_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 static void network_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
-	g_object_set(cell, "markup", "", NULL);
+	gchar *essid, *psk, *markup;
+
+	gtk_tree_model_get(model, iter, CLIENT_COLUMN_NETWORK_ESSID, &essid,
+					CLIENT_COLUMN_NETWORK_PSK, &psk, -1);
+
+	if (essid != NULL)
+		markup = g_strdup_printf("%s\n<small>PSK: %s\n</small>",
+					essid, psk ? "Yes" : "No");
+	else
+		markup = g_strdup_printf("\n<small>\n</small>");
+	g_object_set(cell, "markup", markup, NULL);
+	g_free(markup);
+
+	g_free(essid);
+	g_free(psk);
 }
 
 static void ipv4_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
@@ -171,14 +185,31 @@ static void select_callback(GtkTreeSelection *selection, gpointer user_data)
 {
 	GtkTreeModel *model;
 	GtkTreeIter iter;
+	GtkWidget *widget;
 	gboolean selected;
-	gchar *index;
+	gchar *network = NULL, *passphrase = NULL;
 
 	selected = gtk_tree_selection_get_selected(selection, &model, &iter);
-	if (selected == FALSE)
-		return;
+	if (selected == TRUE)
+		gtk_tree_model_get(model, &iter,
+				CLIENT_COLUMN_NETWORK_ESSID, &network,
+				CLIENT_COLUMN_NETWORK_PSK, &passphrase, -1);
 
-	index = gtk_tree_model_get_string_from_iter(model, &iter);
+	widget = g_object_get_data(G_OBJECT(selection), "network");
+	if (widget != NULL) {
+		gtk_combo_box_remove_text(GTK_COMBO_BOX(widget), 0);
+		gtk_combo_box_insert_text(GTK_COMBO_BOX(widget), 0,
+						network ? network : "");
+		gtk_combo_box_set_active(GTK_COMBO_BOX(widget), 0);
+	}
+
+	widget = g_object_get_data(G_OBJECT(selection), "passphrase");
+	if (widget != NULL)
+		gtk_entry_set_text(GTK_ENTRY(widget),
+						passphrase ? passphrase : "");
+
+	g_free(network);
+	g_free(passphrase);
 }
 
 static GtkWidget *create_tree(void)
@@ -327,6 +358,7 @@ static void network_callback(GtkWidget *button, gpointer user_data)
 	GtkTreeIter iter;
 	GtkWidget *widget;
 	gchar *index, *network;
+	const gchar *passphrase;
 
 	if (gtk_tree_selection_get_selected(selection,
 						&model, &iter) == FALSE)
@@ -340,7 +372,13 @@ static void network_callback(GtkWidget *button, gpointer user_data)
 
 	network = gtk_combo_box_get_active_text(GTK_COMBO_BOX(widget));
 
-	//client_set_network(index, network);
+	widget = g_object_get_data(G_OBJECT(selection), "passphrase");
+	if (widget == NULL)
+		return;
+
+	passphrase = gtk_entry_get_text(GTK_ENTRY(widget));
+
+	client_set_network(index, network, passphrase);
 
 	g_free(network);
 }
@@ -373,6 +411,7 @@ static GtkWidget *create_window(void)
 	GtkWidget *buttonbox;
 	GtkWidget *button;
 	GtkWidget *combo;
+	GtkWidget *entry;
 	GtkTreeSelection *selection;
 
 	tree = create_tree();
@@ -438,9 +477,15 @@ static GtkWidget *create_window(void)
 	gtk_box_pack_start(GTK_BOX(hbox), vbox, FALSE, FALSE, 0);
 
 	combo = gtk_combo_box_entry_new_text();
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "");
 	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Guest");
 	gtk_box_pack_start(GTK_BOX(vbox), combo, FALSE, FALSE, 0);
 	g_object_set_data(G_OBJECT(selection), "network", combo);
+
+	entry = gtk_entry_new();
+	gtk_entry_set_visibility(GTK_ENTRY(entry), FALSE);
+	gtk_box_pack_start(GTK_BOX(vbox), entry, FALSE, FALSE, 0);
+	g_object_set_data(G_OBJECT(selection), "passphrase", entry);
 
 	button = gtk_button_new_with_label("Set Network");
 	gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
