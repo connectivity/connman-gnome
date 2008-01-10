@@ -31,18 +31,9 @@
 #include <gtk/gtk.h>
 
 #include "client.h"
+#include "advanced.h"
 
 static GtkWidget *interface_notebook;
-
-struct config_data {
-	GtkWidget *widget;
-	GtkWidget *title;
-	GtkWidget *label;
-
-	GtkWidget *window;
-	GtkTreeModel *model;
-	gchar *index;
-};
 
 static void update_status(struct config_data *data, guint type, guint state,
 				const gchar *network, const gchar *address)
@@ -118,6 +109,9 @@ static void update_config(struct config_data *data)
 
 static void advanced_callback(GtkWidget *button, gpointer user_data)
 {
+	struct config_data *data = user_data;
+
+	gtk_widget_show_all(data->dialog);
 }
 
 static struct config_data *create_config(GtkTreeModel *model,
@@ -159,11 +153,6 @@ static struct config_data *create_config(GtkTreeModel *model,
 	gtk_box_pack_start(GTK_BOX(mainbox), label, FALSE, FALSE, 0);
 	data->label = label;
 
-	update_status(data, type, state, network, address);
-
-	g_free(network);
-	g_free(address);
-
 
 	hbox = gtk_hbox_new(FALSE, 12);
 	gtk_box_pack_end(GTK_BOX(mainbox), hbox, FALSE, FALSE, 0);
@@ -185,6 +174,13 @@ static struct config_data *create_config(GtkTreeModel *model,
 				G_CALLBACK(advanced_callback), data);
 
 	data->window = user_data;
+	create_advanced_dialog(data, type);
+
+	update_status(data, type, state, network, address);
+
+	g_free(network);
+	g_free(address);
+
 	data->model = model;
 	data->index = gtk_tree_model_get_string_from_iter(model, iter);
 	client_set_userdata(data->index, data);
@@ -423,7 +419,7 @@ static GtkWidget *create_interfaces(GtkWidget *window)
 static void delete_callback(GtkWidget *window, GdkEvent *event,
 							gpointer user_data)
 {
-	gtk_widget_destroy(GTK_WIDGET(window));
+	gtk_widget_destroy(window);
 
 	gtk_main_quit();
 }
@@ -432,7 +428,7 @@ static void close_callback(GtkWidget *button, gpointer user_data)
 {
 	GtkWidget *window = user_data;
 
-	gtk_widget_destroy(GTK_WIDGET(window));
+	gtk_widget_destroy(window);
 
 	gtk_main_quit();
 }
