@@ -52,6 +52,9 @@ static void state_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 	case CLIENT_STATE_READY:
 		str = "Ready";
 		break;
+	case CLIENT_STATE_SHUTDOWN:
+		str = "Shutdown";
+		break;
 	default:
 		str = "Unknown";
 		break;

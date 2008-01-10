@@ -124,6 +124,8 @@ static guint string_to_state(const char *state)
 		return CLIENT_STATE_CARRIER;
 	else if (g_ascii_strcasecmp(state, "ready") == 0)
 		return CLIENT_STATE_READY;
+	else if (g_ascii_strcasecmp(state, "shutdown") == 0)
+		return CLIENT_STATE_SHUTDOWN;
 	else
 		return CLIENT_STATE_UNKNOWN;
 }
