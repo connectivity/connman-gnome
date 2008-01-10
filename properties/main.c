@@ -48,7 +48,10 @@ static void update_status(struct config_data *data, guint type, guint state,
 			str = N_("Cable Connected");
 			break;
 		case CLIENT_STATE_READY:
-			str = N_("Not Connected");
+			str = N_("Connected");
+			info = g_strdup_printf(_("%s is currently active "
+						"and has the IP address %s."),
+						N_("Ethernet"), address);
 			break;
 		default:
 			str = N_("Cable Unplugged");
