@@ -144,11 +144,12 @@ static void network_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 static void ipv4_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
-	guint method;
+	guint state, method;
 	gchar *address, *netmask, *gateway, *markup;
 	const char *str;
 
-	gtk_tree_model_get(model, iter, CLIENT_COLUMN_IPV4_METHOD, &method,
+	gtk_tree_model_get(model, iter, CLIENT_COLUMN_STATE, &state,
+				CLIENT_COLUMN_IPV4_METHOD, &method,
 				CLIENT_COLUMN_IPV4_ADDRESS, &address,
 				CLIENT_COLUMN_IPV4_NETMASK, &netmask,
 				CLIENT_COLUMN_IPV4_GATEWAY, &gateway, -1);
@@ -168,7 +169,7 @@ static void ipv4_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 		break;
 	}
 
-	if (address != NULL)
+	if (address != NULL && state == CLIENT_STATE_READY)
 		markup = g_strdup_printf("%s\n<small>%s/%s\ngw %s</small>",
 					str, address, netmask, gateway);
 	else
