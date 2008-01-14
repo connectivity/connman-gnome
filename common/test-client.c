@@ -46,8 +46,23 @@ static void state_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 	case CLIENT_STATE_OFF:
 		str = "Off";
 		break;
+	case CLIENT_STATE_ENABLED:
+		str = "Enabled";
+		break;
+	case CLIENT_STATE_SCANNING:
+		str = "Scanning";
+		break;
+	case CLIENT_STATE_CONNECT:
+		str = "Connect";
+		break;
+	case CLIENT_STATE_CONNECTED:
+		str = "Connected";
+		break;
 	case CLIENT_STATE_CARRIER:
 		str = "Carrier";
+		break;
+	case CLIENT_STATE_CONFIGURE:
+		str = "Configure";
 		break;
 	case CLIENT_STATE_READY:
 		str = "Ready";

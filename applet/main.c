@@ -164,12 +164,17 @@ static void state_callback(guint state, gint signal)
 {
 	switch (state) {
 	case CLIENT_STATE_OFF:
+	case CLIENT_STATE_ENABLED:
+	case CLIENT_STATE_SHUTDOWN:
 		status_offline();
 		break;
-	case CLIENT_STATE_ENABLED:
+	case CLIENT_STATE_SCANNING:
+	case CLIENT_STATE_CONNECT:
 		status_prepare();
 		break;
+	case CLIENT_STATE_CONNECTED:
 	case CLIENT_STATE_CARRIER:
+	case CLIENT_STATE_CONFIGURE:
 		status_config();
 		break;
 	case CLIENT_STATE_READY:

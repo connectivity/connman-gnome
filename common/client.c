@@ -71,8 +71,9 @@ static void execute_state_callback(void)
 
 		if (active == TRUE) {
 			switch (new_state) {
-			case CLIENT_STATE_ENABLED:
+			case CLIENT_STATE_SCANNING:
 			case CLIENT_STATE_CARRIER:
+			case CLIENT_STATE_CONFIGURE:
 			case CLIENT_STATE_READY:
 				break;
 			default:
@@ -116,12 +117,16 @@ static guint string_to_state(const char *state)
 		return CLIENT_STATE_OFF;
 	else if (g_ascii_strcasecmp(state, "enabled") == 0)
 		return CLIENT_STATE_ENABLED;
+	else if (g_ascii_strcasecmp(state, "scanning") == 0)
+		return CLIENT_STATE_SCANNING;
 	else if (g_ascii_strcasecmp(state, "connect") == 0)
 		return CLIENT_STATE_CONNECT;
-	else if (g_ascii_strcasecmp(state, "config") == 0)
-		return CLIENT_STATE_CONFIG;
+	else if (g_ascii_strcasecmp(state, "connect") == 0)
+		return CLIENT_STATE_CONNECTED;
 	else if (g_ascii_strcasecmp(state, "carrier") == 0)
 		return CLIENT_STATE_CARRIER;
+	else if (g_ascii_strcasecmp(state, "configure") == 0)
+		return CLIENT_STATE_CONFIGURE;
 	else if (g_ascii_strcasecmp(state, "ready") == 0)
 		return CLIENT_STATE_READY;
 	else if (g_ascii_strcasecmp(state, "shutdown") == 0)

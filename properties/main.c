@@ -260,9 +260,11 @@ static void state_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 	switch (state) {
 	case CLIENT_STATE_OFF:
 	case CLIENT_STATE_ENABLED:
+	case CLIENT_STATE_SCANNING:
 	case CLIENT_STATE_CONNECT:
-	case CLIENT_STATE_CONFIG:
+	case CLIENT_STATE_CONNECTED:
 	case CLIENT_STATE_CARRIER:
+	case CLIENT_STATE_CONFIGURE:
 	case CLIENT_STATE_SHUTDOWN:
 		g_object_set(cell, "icon-name", GTK_STOCK_NO, NULL);
 		break;
@@ -300,12 +302,16 @@ static void type_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 	switch (state) {
 	case CLIENT_STATE_OFF:
 	case CLIENT_STATE_ENABLED:
-	case CLIENT_STATE_CONNECT:
-	case CLIENT_STATE_CONFIG:
+	case CLIENT_STATE_SCANNING:
 		info = N_("Not Connected");
 		break;
+	case CLIENT_STATE_CONNECT:
+		info = N_("Connecting");
+		break;
+	case CLIENT_STATE_CONNECTED:
 	case CLIENT_STATE_CARRIER:
-		info = N_("Carrier");
+	case CLIENT_STATE_CONFIGURE:
+		info = N_("No IP Address");
 		break;
 	case CLIENT_STATE_READY:
 		info = N_("Connected");

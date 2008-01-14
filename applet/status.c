@@ -104,6 +104,8 @@ static void icon_animation_start(IconAnimation *animation,
 	if (animation->id > 0)
 		return;
 
+	animation->frame = start;
+
 	animation->id = g_timeout_add_full(G_PRIORITY_DEFAULT_IDLE, 100,
 				icon_animation_timeout, animation, NULL);
 }
