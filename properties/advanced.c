@@ -29,7 +29,7 @@
 #include "client.h"
 #include "advanced.h"
 
-static gboolean separator_function(GtkTreeModel *model,
+gboolean separator_function(GtkTreeModel *model,
 					GtkTreeIter *iter, gpointer user_data)
 {
 	gchar *text;

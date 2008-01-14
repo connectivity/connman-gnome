@@ -86,12 +86,20 @@ static void update_status(struct config_data *data,
 
 	gtk_label_set_markup(GTK_LABEL(data->label), info);
 
+	g_free(info);
+
 	if (policy == CLIENT_POLICY_AUTO)
 		gtk_widget_set_sensitive(GTK_WIDGET(data->button), TRUE);
 	else
 		gtk_widget_set_sensitive(GTK_WIDGET(data->button), FALSE);
 
-	g_free(info);
+	switch (type) {
+	case CLIENT_TYPE_80203:
+		update_80203_policy(data, policy);
+		break;
+	default:
+		break;
+	}
 }
 
 static void update_ipv4(struct config_data *data, guint state,
@@ -168,7 +176,7 @@ static struct config_data *create_config(GtkTreeModel *model,
 				CLIENT_COLUMN_NETWORK_ESSID, &network,
 				CLIENT_COLUMN_IPV4_ADDRESS, &address, -1);
 
-	mainbox = gtk_vbox_new(FALSE, 12);
+	mainbox = gtk_vbox_new(FALSE, 6);
 	data->widget = mainbox;
 
 	label = gtk_label_new(NULL);
@@ -184,6 +192,13 @@ static struct config_data *create_config(GtkTreeModel *model,
 	gtk_box_pack_start(GTK_BOX(mainbox), label, FALSE, FALSE, 0);
 	data->label = label;
 
+	switch (type) {
+	case CLIENT_TYPE_80203:
+		add_80203_policy(mainbox, data);
+		break;
+	default:
+		break;
+	}
 
 	hbox = gtk_hbox_new(FALSE, 12);
 	gtk_box_pack_end(GTK_BOX(mainbox), hbox, FALSE, FALSE, 0);

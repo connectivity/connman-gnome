@@ -33,6 +33,11 @@ struct config_data {
 
 	struct {
 		GtkWidget *config;
+		GtkWidget *label;
+	} policy;
+
+	struct {
+		GtkWidget *config;
 		GtkWidget *label[3];
 		GtkWidget *value[3];
 		GtkWidget *entry[3];
@@ -40,3 +45,9 @@ struct config_data {
 };
 
 void create_advanced_dialog(struct config_data *data, guint type);
+
+void add_80203_policy(GtkWidget *mainbox, struct config_data *data);
+void update_80203_policy(struct config_data *data, guint policy);
+
+gboolean separator_function(GtkTreeModel *model,
+					GtkTreeIter *iter, gpointer user_data);
