@@ -35,7 +35,8 @@
 
 static GtkWidget *interface_notebook;
 
-static void update_status(struct config_data *data, guint type, guint state,
+static void update_status(struct config_data *data,
+				guint type, guint state, guint policy,
 				const gchar *network, const gchar *address)
 {
 	const char *str;
@@ -85,14 +86,34 @@ static void update_status(struct config_data *data, guint type, guint state,
 
 	gtk_label_set_markup(GTK_LABEL(data->label), info);
 
+	if (policy == CLIENT_POLICY_AUTO)
+		gtk_widget_set_sensitive(GTK_WIDGET(data->button), TRUE);
+	else
+		gtk_widget_set_sensitive(GTK_WIDGET(data->button), FALSE);
+
 	g_free(info);
+}
+
+static void update_ipv4(struct config_data *data, guint state,
+				const gchar *address, const gchar *netmask,
+							const gchar *gateway)
+{
+	if (state == CLIENT_STATE_READY) {
+		gtk_label_set_text(GTK_LABEL(data->ipv4.value[0]), address);
+		gtk_label_set_text(GTK_LABEL(data->ipv4.value[1]), netmask);
+		gtk_label_set_text(GTK_LABEL(data->ipv4.value[2]), gateway);
+	} else {
+		gtk_label_set_text(GTK_LABEL(data->ipv4.value[0]), NULL);
+		gtk_label_set_text(GTK_LABEL(data->ipv4.value[1]), NULL);
+		gtk_label_set_text(GTK_LABEL(data->ipv4.value[2]), NULL);
+	}
 }
 
 static void update_config(struct config_data *data)
 {
 	GtkTreeIter iter;
-	guint type, state;
-	gchar *network, *address;
+	guint type, state, policy;
+	gchar *network, *address, *netmask, *gateway;
 
 	if (gtk_tree_model_get_iter_from_string(data->model,
 						&iter, data->index) == FALSE)
@@ -101,13 +122,19 @@ static void update_config(struct config_data *data)
 	gtk_tree_model_get(data->model, &iter,
 				CLIENT_COLUMN_TYPE, &type,
 				CLIENT_COLUMN_STATE, &state,
+				CLIENT_COLUMN_POLICY, &policy,
 				CLIENT_COLUMN_NETWORK_ESSID, &network,
-				CLIENT_COLUMN_IPV4_ADDRESS, &address, -1);
+				CLIENT_COLUMN_IPV4_ADDRESS, &address,
+				CLIENT_COLUMN_IPV4_NETMASK, &netmask,
+				CLIENT_COLUMN_IPV4_GATEWAY, &gateway, -1);
 
-	update_status(data, type, state, network, address);
+	update_status(data, type, state, policy, network, address);
+	update_ipv4(data, state, address, netmask, gateway);
 
 	g_free(network);
 	g_free(address);
+	g_free(netmask);
+	g_free(gateway);
 }
 
 static void advanced_callback(GtkWidget *button, gpointer user_data)
@@ -125,7 +152,7 @@ static struct config_data *create_config(GtkTreeModel *model,
 	GtkWidget *hbox;
 	GtkWidget *button;
 	struct config_data *data;
-	guint type, state;
+	guint type, state, policy;
 	gchar *markup, *vendor, *product, *network, *address;
 
 	data = g_try_new0(struct config_data, 1);
@@ -137,6 +164,7 @@ static struct config_data *create_config(GtkTreeModel *model,
 				CLIENT_COLUMN_VENDOR, &vendor,
 				CLIENT_COLUMN_PRODUCT, &product,
 				CLIENT_COLUMN_STATE, &state,
+				CLIENT_COLUMN_POLICY, &policy,
 				CLIENT_COLUMN_NETWORK_ESSID, &network,
 				CLIENT_COLUMN_IPV4_ADDRESS, &address, -1);
 
@@ -175,11 +203,12 @@ static struct config_data *create_config(GtkTreeModel *model,
 	gtk_box_pack_start(GTK_BOX(hbox), button, FALSE, FALSE, 0);
 	g_signal_connect(G_OBJECT(button), "clicked",
 				G_CALLBACK(advanced_callback), data);
+	data->button = button;
 
 	data->window = user_data;
 	create_advanced_dialog(data, type);
 
-	update_status(data, type, state, network, address);
+	update_status(data, type, state, policy, network, address);
 
 	g_free(network);
 	g_free(address);

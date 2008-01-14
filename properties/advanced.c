@@ -29,6 +29,159 @@
 #include "client.h"
 #include "advanced.h"
 
+static gboolean separator_function(GtkTreeModel *model,
+					GtkTreeIter *iter, gpointer user_data)
+{
+	gchar *text;
+	gboolean result = FALSE;
+
+	gtk_tree_model_get(model, iter, 0, &text, -1);
+
+	if (text && *text == '\0')
+		result = TRUE;
+
+	g_free(text);
+
+	return result;
+}
+
+static void set_widgets(struct config_data *data, gboolean label,
+					gboolean value, gboolean entry)
+{
+	int i;
+
+	for (i = 0; i < 3; i++) {
+		if (label == TRUE)
+			gtk_widget_show(data->ipv4.label[i]);
+		else
+			gtk_widget_hide(data->ipv4.label[i]);
+
+		if (value == TRUE)
+			gtk_widget_show(data->ipv4.value[i]);
+		else
+			gtk_widget_hide(data->ipv4.value[i]);
+
+		if (entry == TRUE)
+			gtk_widget_show(data->ipv4.entry[i]);
+		else
+			gtk_widget_hide(data->ipv4.entry[i]);
+	}
+}
+
+static void config_callback(GtkWidget *widget, gpointer user_data)
+{
+	struct config_data *data = user_data;
+	gint active;
+
+	active = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+
+	switch (active) {
+	case 0:
+		set_widgets(data, TRUE, TRUE, FALSE);
+		break;
+	case 1:
+		set_widgets(data, TRUE, FALSE, TRUE);
+		break;
+	case 3:
+		set_widgets(data, FALSE, FALSE, FALSE);
+		break;
+	}
+}
+
+static void add_config(GtkWidget *mainbox, struct config_data *data)
+{
+	GtkWidget *table;
+	GtkWidget *label;
+	GtkWidget *entry;
+	GtkWidget *combo;
+
+	table = gtk_table_new(5, 5, TRUE);
+	gtk_table_set_row_spacings(GTK_TABLE(table), 2);
+	gtk_table_set_col_spacings(GTK_TABLE(table), 8);
+	gtk_box_pack_start(GTK_BOX(mainbox), table, FALSE, FALSE, 0);
+
+	label = gtk_label_new(_("Configure IPv4:"));
+	gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_RIGHT);
+	gtk_misc_set_alignment(GTK_MISC(label), 1.0, 0.5);
+	gtk_table_attach_defaults(GTK_TABLE(table), label, 0, 1, 0, 1);
+
+	combo = gtk_combo_box_new_text();
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Using DHCP");
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Manually");
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "");
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Off");
+	gtk_combo_box_set_row_separator_func(GTK_COMBO_BOX(combo),
+					separator_function, NULL, NULL);
+	gtk_table_attach_defaults(GTK_TABLE(table), combo, 1, 3, 0, 1);
+	data->ipv4.config = combo;
+
+	label = gtk_label_new(_("IP Address:"));
+	gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_RIGHT);
+	gtk_misc_set_alignment(GTK_MISC(label), 1.0, 0.5);
+	gtk_widget_set_no_show_all(label, TRUE);
+	gtk_table_attach_defaults(GTK_TABLE(table), label, 0, 1, 1, 2);
+	data->ipv4.label[0] = label;
+
+	label = gtk_label_new(NULL);
+	gtk_label_set_selectable(GTK_LABEL(label), TRUE);
+	gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_LEFT);
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
+	gtk_widget_set_no_show_all(label, TRUE);
+	gtk_table_attach_defaults(GTK_TABLE(table), label, 1, 3, 1, 2);
+	data->ipv4.value[0] = label;
+
+	entry = gtk_entry_new();
+	gtk_widget_set_no_show_all(entry, TRUE);
+	gtk_table_attach_defaults(GTK_TABLE(table), entry, 1, 3, 1, 2);
+	data->ipv4.entry[0] = entry;
+
+	label = gtk_label_new(_("Subnet Mask:"));
+	gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_RIGHT);
+	gtk_misc_set_alignment(GTK_MISC(label), 1.0, 0.5);
+	gtk_widget_set_no_show_all(label, TRUE);
+	gtk_table_attach_defaults(GTK_TABLE(table), label, 0, 1, 2, 3);
+	data->ipv4.label[1] = label;
+
+	label = gtk_label_new(NULL);
+	gtk_label_set_selectable(GTK_LABEL(label), TRUE);
+	gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_LEFT);
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
+	gtk_widget_set_no_show_all(label, TRUE);
+	gtk_table_attach_defaults(GTK_TABLE(table), label, 1, 3, 2, 3);
+	data->ipv4.value[1] = label;
+
+	entry = gtk_entry_new();
+	gtk_widget_set_no_show_all(entry, TRUE);
+	gtk_table_attach_defaults(GTK_TABLE(table), entry, 1, 3, 2, 3);
+	data->ipv4.entry[1] = entry;
+
+	label = gtk_label_new(_("Router:"));
+	gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_RIGHT);
+	gtk_misc_set_alignment(GTK_MISC(label), 1.0, 0.5);
+	gtk_widget_set_no_show_all(label, TRUE);
+	gtk_table_attach_defaults(GTK_TABLE(table), label, 0, 1, 3, 4);
+	data->ipv4.label[2] = label;
+
+	label = gtk_label_new(NULL);
+	gtk_label_set_selectable(GTK_LABEL(label), TRUE);
+	gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_LEFT);
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
+	gtk_widget_set_no_show_all(label, TRUE);
+	gtk_table_attach_defaults(GTK_TABLE(table), label, 1, 3, 3, 4);
+	data->ipv4.value[2] = label;
+
+	entry = gtk_entry_new();
+	gtk_widget_set_no_show_all(entry, TRUE);
+	gtk_table_attach_defaults(GTK_TABLE(table), entry, 1, 3, 3, 4);
+	data->ipv4.entry[2] = entry;
+
+	gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 0);
+	set_widgets(data, TRUE, TRUE, FALSE);
+
+	g_signal_connect(G_OBJECT(combo), "changed",
+					G_CALLBACK(config_callback), data);
+}
+
 static void delete_callback(GtkWidget *window, GdkEvent *event,
 							gpointer user_data)
 {
@@ -85,16 +238,19 @@ void create_advanced_dialog(struct config_data *data, guint type)
 					G_CALLBACK(close_callback), dialog);
 
 	if (type == CLIENT_TYPE_80211) {
-		widget = gtk_label_new(NULL);
+		widget = gtk_vbox_new(FALSE, 24);
+		gtk_container_set_border_width(GTK_CONTAINER(widget), 24);
 		gtk_notebook_append_page(GTK_NOTEBOOK(notebook), widget, NULL);
 		gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook),
 							widget, _("Wireless"));
 	}
 
-	widget = gtk_label_new(NULL);
+	widget = gtk_vbox_new(FALSE, 24);
+	gtk_container_set_border_width(GTK_CONTAINER(widget), 24);
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), widget, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook),
 						widget, _("TCP/IP"));
+	add_config(widget, data);
 
 	widget = gtk_label_new(NULL);
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), widget, NULL);

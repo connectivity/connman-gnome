@@ -23,12 +23,20 @@ struct config_data {
 	GtkWidget *widget;
 	GtkWidget *title;
 	GtkWidget *label;
+	GtkWidget *button;
 
 	GtkWidget *window;
 	GtkTreeModel *model;
 	gchar *index;
 
 	GtkWidget *dialog;
+
+	struct {
+		GtkWidget *config;
+		GtkWidget *label[3];
+		GtkWidget *value[3];
+		GtkWidget *entry[3];
+	} ipv4;
 };
 
 void create_advanced_dialog(struct config_data *data, guint type);
