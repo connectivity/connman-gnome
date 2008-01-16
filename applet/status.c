@@ -141,11 +141,16 @@ static void icon_animation_free(IconAnimation *animation)
 
 static void activate_callback(GObject *object, gpointer user_data)
 {
-	GtkWidget *menu = user_data;
+	StatusCallback callback = user_data;
 	guint32 activate_time = gtk_get_current_event_time();
+	GtkWidget *menu;
 
-	if (menu == NULL)
+	menu = gtk_menu_new();
+
+	if (callback == NULL || callback(GTK_MENU(menu)) == FALSE) {
+		g_object_unref(menu);
 		return;
+	}
 
 	gtk_menu_popup(GTK_MENU(menu), NULL, NULL,
 			gtk_status_icon_position_menu,
@@ -155,12 +160,12 @@ static void activate_callback(GObject *object, gpointer user_data)
 static void popup_callback(GObject *object, guint button,
 				guint activate_time, gpointer user_data)
 {
-	GtkWidget *menu = user_data;
+	GtkMenu *menu = user_data;
 
 	if (menu == NULL)
 		return;
 
-	gtk_menu_popup(GTK_MENU(menu), NULL, NULL,
+	gtk_menu_popup(menu, NULL, NULL,
 			gtk_status_icon_position_menu,
 			GTK_STATUS_ICON(object), button, activate_time);
 }
@@ -171,7 +176,7 @@ static GdkPixbuf *pixbuf_none;
 static GdkPixbuf *pixbuf_wired;
 static GdkPixbuf *pixbuf_signal[5];
 
-int status_init(GtkWidget *activate, GtkWidget *popup)
+int status_init(StatusCallback activate, GtkWidget *popup)
 {
 	GdkScreen *screen;
 

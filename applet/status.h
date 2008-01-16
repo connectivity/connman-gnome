@@ -19,7 +19,9 @@
  *
  */
 
-int status_init(GtkWidget *activate, GtkWidget *popup);
+typedef gboolean (* StatusCallback) (GtkMenu *menu);
+
+int status_init(StatusCallback activate, GtkWidget *popup);
 void status_cleanup(void);
 
 void status_hide(void);

@@ -111,8 +111,7 @@ static GtkWidget *create_popupmenu(void)
 	return menu;
 }
 
-#if 0
-static GtkWidget *append_menuitem(GtkWidget *menu,
+static GtkWidget *append_menuitem(GtkMenu *menu,
 					const char *ssid, double strength)
 {
 	GtkWidget *item;
@@ -145,20 +144,75 @@ static GtkWidget *append_menuitem(GtkWidget *menu,
 	return item;
 }
 
-static GtkWidget *create_networkmenu(void)
+static void enumerate_networks(GtkMenu *menu,
+				GtkTreeModel *model, GtkTreeIter *parent)
 {
-	GtkWidget *menu;
-	GtkWidget *item;
+	GtkTreeIter iter;
+	gboolean cont;
 
-	menu = gtk_menu_new();
-	item = append_menuitem(menu, "Test network", 0.8);
-	item = append_menuitem(menu, "Company network", 0.5);
+	cont = gtk_tree_model_iter_children(model, &iter, parent);
 
-	return menu;
+	while (cont == TRUE) {
+		GtkWidget *item;
+		gchar *str;
+
+		gtk_tree_model_get(model, &iter,
+					CLIENT_COLUMN_NETWORK_ESSID, &str, -1);
+
+		item = append_menuitem(menu, str, 0.0);
+
+		g_free(str);
+
+		cont = gtk_tree_model_iter_next(model, &iter);
+	}
 }
-#else
-#define create_networkmenu() NULL
-#endif
+
+static gboolean menu_callback(GtkMenu *menu)
+{
+	GtkTreeModel *model;
+	GtkTreeIter parent;
+	GtkWidget *item;
+	gboolean cont;
+
+	model = client_get_active_model();
+
+	cont = gtk_tree_model_get_iter_first(model, &parent);
+
+	while (cont == TRUE) {
+		guint type;
+		gchar *str;
+
+		gtk_tree_model_get(model, &parent,
+					CLIENT_COLUMN_TYPE, &type,
+					CLIENT_COLUMN_PRODUCT, &str, -1);
+
+		switch (type) {
+		case CLIENT_TYPE_80211:
+			enumerate_networks(menu, model, &parent);
+			break;
+		default:
+			break;
+		}
+
+		g_free(str);
+
+		cont = gtk_tree_model_iter_next(model, &parent);
+	}
+
+	g_object_unref(model);
+
+	item = gtk_separator_menu_item_new();
+	gtk_widget_show(item);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+
+	item = gtk_menu_item_new_with_label(_("Join Other Network..."));
+	//g_signal_connect(item, "activate",
+	//			G_CALLBACK(join_callback), NULL);
+	gtk_widget_show(item);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+
+	return TRUE;
+}
 
 static void state_callback(guint state, gint signal)
 {
@@ -193,7 +247,6 @@ static void sig_term(int sig)
 
 int main(int argc, char *argv[])
 {
-	GtkWidget *activate, *popup;
 	struct sigaction sa;
 
 	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
@@ -204,10 +257,7 @@ int main(int argc, char *argv[])
 
 	gtk_window_set_default_icon_name("stock_internet");
 
-	activate = create_networkmenu();
-	popup = create_popupmenu();
-
-	status_init(activate, popup);
+	status_init(menu_callback, create_popupmenu());
 
 	client_init(NULL);
 
