@@ -251,6 +251,44 @@ static void ipv4_notify(DBusGProxy *object,
 	handle_ipv4(hash, &iter);
 }
 
+static void append_network(GHashTable *hash, GtkTreeIter *parent)
+{
+	GtkTreeModel *model = GTK_TREE_MODEL(store);
+	GtkTreeIter iter;
+	GValue *value;
+	const char *str;
+	gchar *essid;
+	gboolean cont;
+
+	value = g_hash_table_lookup(hash, "ESSID");
+	if (value == NULL)
+		return;
+
+	str = g_value_get_string(value);
+	if (str == NULL)
+		return;
+
+	cont = gtk_tree_model_iter_children(model, &iter, parent);
+
+	while (cont == TRUE) {
+		gtk_tree_model_get(model, &iter,
+				CLIENT_COLUMN_NETWORK_ESSID, &essid, -1);
+
+		if (strcmp(str, essid) == 0) {
+			g_free(essid);
+			return;
+		}
+
+		g_free(essid);
+
+		cont = gtk_tree_model_iter_next(model, &iter);
+	}
+
+	gtk_tree_store_insert_with_values(store, &iter, parent, -1,
+					CLIENT_COLUMN_ACTIVE, TRUE,
+					CLIENT_COLUMN_NETWORK_ESSID, str, -1);
+}
+
 static void handle_network(GHashTable *hash,
 				GtkTreeIter *iter, gboolean secrets)
 {
@@ -451,6 +489,19 @@ static void policy_changed(DBusGProxy *proxy, const char *policy,
 						string_to_policy(policy), -1);
 }
 
+static void network_found(DBusGProxy *proxy, GHashTable *hash,
+							gpointer user_data)
+{
+	GtkTreeModel *model = GTK_TREE_MODEL(store);
+	GtkTreeIter iter;
+
+	if (gtk_tree_model_get_iter_from_string(model, &iter,
+							user_data) == FALSE)
+		return;
+
+	append_network(hash, &iter);
+}
+
 static void network_changed(DBusGProxy *proxy, GHashTable *hash,
 							gpointer user_data)
 {
@@ -555,6 +606,16 @@ static void add_interface(DBusGProxy *manager, const char *path)
 
 	dbus_g_proxy_connect_signal(proxy, "PolicyChanged",
 			G_CALLBACK(policy_changed), index, signal_closure);
+
+	index = gtk_tree_model_get_string_from_iter(model, &iter);
+
+	dbus_g_proxy_add_signal(proxy, "NetworkFound",
+				dbus_g_type_get_map("GHashTable",
+					G_TYPE_STRING, G_TYPE_VALUE),
+							G_TYPE_INVALID);
+
+	dbus_g_proxy_connect_signal(proxy, "NetworkFound",
+			G_CALLBACK(network_found), index, signal_closure);
 
 	index = gtk_tree_model_get_string_from_iter(model, &iter);
 

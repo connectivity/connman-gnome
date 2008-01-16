@@ -33,6 +33,7 @@
 static void state_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
+	GtkTreeIter parent;
 	gboolean active;
 	guint state, signal;
 	gchar *markup;
@@ -41,6 +42,12 @@ static void state_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 	gtk_tree_model_get(model, iter, CLIENT_COLUMN_ACTIVE, &active,
 					CLIENT_COLUMN_STATE, &state,
 					CLIENT_COLUMN_SIGNAL, &signal, -1);
+
+	if (gtk_tree_model_iter_parent(model, &parent, iter) == TRUE) {
+		g_object_set(cell, "text",
+				active == TRUE ? "Valid" : "", NULL);
+		return;
+	}
 
 	switch (state) {
 	case CLIENT_STATE_OFF:
@@ -84,9 +91,15 @@ static void state_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 static void type_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
+	GtkTreeIter parent;
 	guint type;
 	gchar *driver, *markup;
 	const char *str;
+
+	if (gtk_tree_model_iter_parent(model, &parent, iter) == TRUE) {
+		g_object_set(cell, "text", NULL, NULL);
+		return;
+	}
 
 	gtk_tree_model_get(model, iter, CLIENT_COLUMN_TYPE, &type,
 					CLIENT_COLUMN_DRIVER, &driver, -1);
@@ -113,9 +126,15 @@ static void type_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 static void policy_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
+	GtkTreeIter parent;
 	guint policy;
 	gchar *markup;
 	const char *str;
+
+	if (gtk_tree_model_iter_parent(model, &parent, iter) == TRUE) {
+		g_object_set(cell, "text", NULL, NULL);
+		return;
+	}
 
 	gtk_tree_model_get(model, iter, CLIENT_COLUMN_POLICY, &policy, -1);
 
@@ -142,7 +161,16 @@ static void policy_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 static void network_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
+	GtkTreeIter parent;
 	gchar *essid, *psk, *markup;
+
+	if (gtk_tree_model_iter_parent(model, &parent, iter) == TRUE) {
+		gtk_tree_model_get(model, iter,
+				CLIENT_COLUMN_NETWORK_ESSID, &essid, -1);
+		g_object_set(cell, "text", essid, NULL);
+		g_free(essid);
+		return;
+	}
 
 	gtk_tree_model_get(model, iter, CLIENT_COLUMN_NETWORK_ESSID, &essid,
 					CLIENT_COLUMN_NETWORK_PSK, &psk, -1);
@@ -162,9 +190,15 @@ static void network_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 static void ipv4_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
+	GtkTreeIter parent;
 	guint state, method;
 	gchar *address, *netmask, *gateway, *markup;
 	const char *str;
+
+	if (gtk_tree_model_iter_parent(model, &parent, iter) == TRUE) {
+		g_object_set(cell, "text", NULL, NULL);
+		return;
+	}
 
 	gtk_tree_model_get(model, iter, CLIENT_COLUMN_STATE, &state,
 				CLIENT_COLUMN_IPV4_METHOD, &method,
