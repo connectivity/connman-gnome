@@ -154,12 +154,14 @@ static void enumerate_networks(GtkMenu *menu,
 
 	while (cont == TRUE) {
 		GtkWidget *item;
+		guint signal;
 		gchar *str;
 
 		gtk_tree_model_get(model, &iter,
+					CLIENT_COLUMN_SIGNAL, &signal,
 					CLIENT_COLUMN_NETWORK_ESSID, &str, -1);
 
-		item = append_menuitem(menu, str, 0.0);
+		item = append_menuitem(menu, str, (double) signal / 100);
 
 		g_free(str);
 

@@ -258,6 +258,7 @@ static void append_network(GHashTable *hash, GtkTreeIter *parent)
 	GValue *value;
 	const char *str;
 	gchar *essid;
+	guint signal;
 	gboolean cont;
 
 	value = g_hash_table_lookup(hash, "ESSID");
@@ -268,6 +269,9 @@ static void append_network(GHashTable *hash, GtkTreeIter *parent)
 	if (str == NULL)
 		return;
 
+	value = g_hash_table_lookup(hash, "Signal");
+	signal = (value == NULL) ? 0 : g_value_get_uint(value);
+
 	cont = gtk_tree_model_iter_children(model, &iter, parent);
 
 	while (cont == TRUE) {
@@ -275,6 +279,8 @@ static void append_network(GHashTable *hash, GtkTreeIter *parent)
 				CLIENT_COLUMN_NETWORK_ESSID, &essid, -1);
 
 		if (strcmp(str, essid) == 0) {
+			gtk_tree_store_set(store, &iter,
+					CLIENT_COLUMN_SIGNAL, signal, -1);
 			g_free(essid);
 			return;
 		}
@@ -286,6 +292,7 @@ static void append_network(GHashTable *hash, GtkTreeIter *parent)
 
 	gtk_tree_store_insert_with_values(store, &iter, parent, -1,
 					CLIENT_COLUMN_ACTIVE, TRUE,
+					CLIENT_COLUMN_SIGNAL, signal,
 					CLIENT_COLUMN_NETWORK_ESSID, str, -1);
 }
 

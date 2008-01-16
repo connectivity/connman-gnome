@@ -44,8 +44,10 @@ static void state_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 					CLIENT_COLUMN_SIGNAL, &signal, -1);
 
 	if (gtk_tree_model_iter_parent(model, &parent, iter) == TRUE) {
-		g_object_set(cell, "text",
-				active == TRUE ? "Valid" : "", NULL);
+		markup = g_strdup_printf("%s [%d]",
+				active == TRUE ? "Valid" : "Invalid", signal);
+		g_object_set(cell, "markup", markup, NULL);
+		g_free(markup);
 		return;
 	}
 
