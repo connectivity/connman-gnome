@@ -99,6 +99,9 @@ static void update_status(struct config_data *data,
 	case CLIENT_TYPE_80203:
 		update_80203_policy(data, policy);
 		break;
+	case CLIENT_TYPE_80211:
+		update_80211_policy(data, policy);
+		break;
 	default:
 		break;
 	}
@@ -197,6 +200,9 @@ static struct config_data *create_config(GtkTreeModel *model,
 	switch (type) {
 	case CLIENT_TYPE_80203:
 		add_80203_policy(mainbox, data);
+		break;
+	case CLIENT_TYPE_80211:
+		add_80211_policy(mainbox, data);
 		break;
 	default:
 		break;

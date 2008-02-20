@@ -45,6 +45,103 @@ gboolean separator_function(GtkTreeModel *model,
 	return result;
 }
 
+#if 0
+static void activate_callback(GtkWidget *button, gpointer user_data)
+{
+	struct config_data *data = user_data;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	DBusGProxy *proxy;
+	GError *error = NULL;
+	const gchar *network, *passphrase;
+
+	gtk_tree_selection_get_selected(data->selection, &model, &iter);
+
+	gtk_tree_model_get(model, &iter, CLIENT_COLUMN_PROXY, &proxy, -1);
+
+	network = gtk_combo_box_get_active_text(GTK_COMBO_BOX(data->network.name));
+
+	passphrase = gtk_entry_get_text(GTK_ENTRY(data->network.passphrase));
+
+	dbus_g_proxy_call(proxy, "SetNetwork", &error,
+					G_TYPE_STRING, network,
+					G_TYPE_INVALID, G_TYPE_INVALID);
+
+	dbus_g_proxy_call(proxy, "SetPassphrase", &error,
+					G_TYPE_STRING, passphrase,
+					G_TYPE_INVALID, G_TYPE_INVALID);
+
+	dbus_g_proxy_call(proxy, "Enable", &error,
+					G_TYPE_INVALID, G_TYPE_INVALID);
+
+	if (error != NULL) {
+		g_printerr("Activate failed: %s\n", error->message);
+		g_error_free(error);
+	}
+}
+
+static void changed_callback(GtkWidget *editable, gpointer user_data)
+{
+	struct config_data *data = user_data;
+	const gchar *text;
+
+	text = gtk_combo_box_get_active_text(GTK_COMBO_BOX(data->network.name));
+
+	gtk_widget_set_sensitive(data->network.activate, *text != '\0');
+}
+#endif
+
+static void add_network(GtkWidget *mainbox, struct config_data *data)
+{
+	GtkWidget *table;
+	GtkWidget *label;
+	GtkWidget *entry;
+	GtkWidget *combo;
+	GtkWidget *button;
+
+	table = gtk_table_new(3, 5, TRUE);
+	gtk_table_set_row_spacings(GTK_TABLE(table), 2);
+	gtk_table_set_col_spacings(GTK_TABLE(table), 8);
+	gtk_box_pack_start(GTK_BOX(mainbox), table, FALSE, FALSE, 0);
+
+	label = gtk_label_new(_("Network Name:"));
+	gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_RIGHT);
+	gtk_misc_set_alignment(GTK_MISC(label), 1.0, 0.5);
+	gtk_table_attach_defaults(GTK_TABLE(table), label, 0, 1, 0, 1);
+
+	combo = gtk_combo_box_entry_new_text();
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Guest");
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "");
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Off");
+	gtk_combo_box_set_row_separator_func(GTK_COMBO_BOX(combo),
+					separator_function, NULL, NULL);
+	gtk_table_attach_defaults(GTK_TABLE(table), combo, 1, 3, 0, 1);
+	//data->network.name = combo;
+
+	label = gtk_label_new(_("Passphrase:"));
+	gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_RIGHT);
+	gtk_misc_set_alignment(GTK_MISC(label), 1.0, 0.5);
+	gtk_table_attach_defaults(GTK_TABLE(table), label, 0, 1, 1, 2);
+
+	entry = gtk_entry_new();
+	gtk_entry_set_visibility(GTK_ENTRY(entry), FALSE);
+	gtk_table_attach_defaults(GTK_TABLE(table), entry, 1, 3, 1, 2);
+	//data->network.passphrase = entry;
+
+	button = gtk_button_new_with_label(_("Activate"));
+	gtk_widget_set_sensitive(button, FALSE);
+	gtk_table_attach_defaults(GTK_TABLE(table), button, 1, 2, 2, 3);
+	//data->network.activate = button;
+
+#if 0
+	g_signal_connect(G_OBJECT(combo), "changed",
+				G_CALLBACK(changed_callback), data);
+
+	g_signal_connect(G_OBJECT(button), "clicked",
+				G_CALLBACK(activate_callback), data);
+#endif
+}
+
 static void set_widgets(struct config_data *data, gboolean label,
 					gboolean value, gboolean entry)
 {
@@ -243,6 +340,7 @@ void create_advanced_dialog(struct config_data *data, guint type)
 		gtk_notebook_append_page(GTK_NOTEBOOK(notebook), widget, NULL);
 		gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook),
 							widget, _("Wireless"));
+		add_network(widget, data);
 	}
 
 	widget = gtk_vbox_new(FALSE, 24);

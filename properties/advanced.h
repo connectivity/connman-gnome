@@ -49,5 +49,8 @@ void create_advanced_dialog(struct config_data *data, guint type);
 void add_80203_policy(GtkWidget *mainbox, struct config_data *data);
 void update_80203_policy(struct config_data *data, guint policy);
 
+void add_80211_policy(GtkWidget *mainbox, struct config_data *data);
+void update_80211_policy(struct config_data *data, guint policy);
+
 gboolean separator_function(GtkTreeModel *model,
 					GtkTreeIter *iter, gpointer user_data);
