@@ -29,16 +29,13 @@
 
 #include <gtk/gtk.h>
 
+#include "common.h"
 #include "client.h"
 
 #ifndef DBYS_TYPE_G_OBJECT_PATH_ARRAY
 #define DBUS_TYPE_G_OBJECT_PATH_ARRAY \
 	(dbus_g_type_get_collection("GPtrArray", DBUS_TYPE_G_OBJECT_PATH))
 #endif
-
-#define CONNMAN_SERVICE    "org.freedesktop.connman"
-#define CONNMAN_MANAGER    CONNMAN_SERVICE ".Manager"
-#define CONNMAN_INTERFACE  CONNMAN_SERVICE ".Interface"
 
 static GtkTreeStore *store = NULL;
 

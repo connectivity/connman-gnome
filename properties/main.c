@@ -30,7 +30,9 @@
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 
+#include "common.h"
 #include "client.h"
+#include "instance.h"
 #include "advanced.h"
 
 static GtkWidget *interface_notebook;
@@ -535,6 +537,7 @@ static void sig_term(int sig)
 
 int main(int argc, char *argv[])
 {
+	GtkWidget *window;
 	struct sigaction sa;
 
 	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
@@ -545,9 +548,14 @@ int main(int argc, char *argv[])
 
 	gtk_window_set_default_icon_name("stock_internet");
 
+	if (instance_init(CONNMAN_SERVICE ".properties") == FALSE)
+		return 0;
+
 	client_init(NULL);
 
-	create_window();
+	window = create_window();
+
+	instance_register(GTK_WINDOW(window));
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
@@ -557,6 +565,8 @@ int main(int argc, char *argv[])
 	gtk_main();
 
 	client_cleanup();
+
+	instance_cleanup();
 
 	return 0;
 }
