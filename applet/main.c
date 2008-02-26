@@ -188,6 +188,8 @@ static gboolean menu_callback(GtkMenu *menu)
 	GtkWidget *item;
 	gboolean cont;
 
+	client_propose_scanning();
+
 	model = client_get_active_model();
 
 	cont = gtk_tree_model_get_iter_first(model, &parent);

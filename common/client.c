@@ -819,6 +819,33 @@ void client_set_state_callback(client_state_callback callback)
 	execute_state_callback();
 }
 
+void client_propose_scanning(void)
+{
+	GtkTreeModel *model = GTK_TREE_MODEL(store);
+	GtkTreeIter iter;
+	gboolean cont;
+
+	cont = gtk_tree_model_get_iter_first(model, &iter);
+
+	while (cont == TRUE) {
+		DBusGProxy *proxy;
+		gboolean active;
+
+		gtk_tree_model_get(model, &iter,
+					CLIENT_COLUMN_ACTIVE, &active,
+					CLIENT_COLUMN_PROXY, &proxy, -1);
+		if (proxy == NULL || active == FALSE)
+			continue;
+
+		dbus_g_proxy_call(proxy, "Scan", NULL,
+					G_TYPE_INVALID, G_TYPE_INVALID);
+
+		g_object_unref(proxy);
+
+		cont = gtk_tree_model_iter_next(model, &iter);
+	}
+}
+
 GtkTreeModel *client_get_model(void)
 {
 	return gtk_tree_model_filter_new(GTK_TREE_MODEL(store), NULL);
