@@ -111,12 +111,13 @@ static GtkWidget *create_popupmenu(void)
 	return menu;
 }
 
-static GtkWidget *append_menuitem(GtkMenu *menu,
-					const char *ssid, double strength)
+static GtkWidget *append_menuitem(GtkMenu *menu, const char *ssid,
+					gboolean security, double strength)
 {
 	GtkWidget *item;
 	GtkWidget *hbox;
 	GtkWidget *label;
+	GtkWidget *image;
 	GtkWidget *progress;
 
 	item = gtk_check_menu_item_new();
@@ -131,6 +132,14 @@ static GtkWidget *append_menuitem(GtkMenu *menu,
 	gtk_label_set_text(GTK_LABEL(label), ssid);
 	gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, TRUE, 0);
 	gtk_widget_show(label);
+
+	image = gtk_image_new_from_stock(GTK_STOCK_DIALOG_AUTHENTICATION,
+							GTK_ICON_SIZE_MENU);
+	gtk_misc_set_alignment(GTK_MISC(image), 1.0, 0.5);
+	if (security == TRUE) {
+		gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
+		gtk_widget_show(image);
+	}
 
 	progress = gtk_progress_bar_new();
 	gtk_widget_set_size_request(progress, 100, -1);
@@ -154,14 +163,17 @@ static void enumerate_networks(GtkMenu *menu,
 
 	while (cont == TRUE) {
 		GtkWidget *item;
+		gboolean security;
 		guint signal;
 		gchar *str;
 
 		gtk_tree_model_get(model, &iter,
-					CLIENT_COLUMN_SIGNAL, &signal,
-					CLIENT_COLUMN_NETWORK_ESSID, &str, -1);
+				CLIENT_COLUMN_SIGNAL, &signal,
+				CLIENT_COLUMN_NETWORK_ESSID, &str,
+				CLIENT_COLUMN_NETWORK_SECURITY, &security, -1);
 
-		item = append_menuitem(menu, str, (double) signal / 100);
+		item = append_menuitem(menu, str, security,
+						(double) signal / 100);
 
 		g_free(str);
 

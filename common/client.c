@@ -260,7 +260,7 @@ static void append_network(GHashTable *hash, GtkTreeIter *parent)
 	const char *str;
 	gchar *essid;
 	guint signal;
-	gboolean cont;
+	gboolean security, cont;
 
 	value = g_hash_table_lookup(hash, "ESSID");
 	if (value == NULL)
@@ -272,6 +272,9 @@ static void append_network(GHashTable *hash, GtkTreeIter *parent)
 
 	value = g_hash_table_lookup(hash, "Signal");
 	signal = (value == NULL) ? 0 : g_value_get_uint(value);
+
+	value = g_hash_table_lookup(hash, "Security");
+	security = (value == NULL) ? FALSE : TRUE;
 
 	cont = gtk_tree_model_iter_children(model, &iter, parent);
 
@@ -292,9 +295,10 @@ static void append_network(GHashTable *hash, GtkTreeIter *parent)
 	}
 
 	gtk_tree_store_insert_with_values(store, &iter, parent, -1,
-					CLIENT_COLUMN_ACTIVE, TRUE,
-					CLIENT_COLUMN_SIGNAL, signal,
-					CLIENT_COLUMN_NETWORK_ESSID, str, -1);
+				CLIENT_COLUMN_ACTIVE, TRUE,
+				CLIENT_COLUMN_SIGNAL, signal,
+				CLIENT_COLUMN_NETWORK_ESSID, str,
+				CLIENT_COLUMN_NETWORK_SECURITY, security, -1);
 }
 
 static void handle_network(GHashTable *hash,
@@ -771,12 +775,12 @@ gboolean client_init(GError **error)
 		return FALSE;
 	}
 
-	store = gtk_tree_store_new(16, G_TYPE_BOOLEAN, DBUS_TYPE_G_PROXY,
+	store = gtk_tree_store_new(17, G_TYPE_BOOLEAN, DBUS_TYPE_G_PROXY,
 				G_TYPE_POINTER, G_TYPE_UINT, G_TYPE_STRING,
 				G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT,
 				G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING,
-				G_TYPE_STRING, G_TYPE_UINT, G_TYPE_STRING,
-						G_TYPE_STRING, G_TYPE_STRING);
+				G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_UINT,
+				G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
 
 	system = create_system(connection);
 
