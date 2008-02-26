@@ -150,6 +150,9 @@ static void policy_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 	case CLIENT_POLICY_AUTO:
 		str = "Automatic";
 		break;
+	case CLIENT_POLICY_ASK:
+		str = "Ask User";
+		break;
 	default:
 		str = "Unknown";
 		break;
@@ -374,6 +377,22 @@ static void policy_auto(GtkWidget *button, gpointer user_data)
 	client_set_policy(index, CLIENT_POLICY_AUTO);
 }
 
+static void policy_ask(GtkWidget *button, gpointer user_data)
+{
+	GtkTreeSelection *selection = user_data;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	gchar *index;
+
+	if (gtk_tree_selection_get_selected(selection,
+						&model, &iter) == FALSE)
+		return;
+
+	index = gtk_tree_model_get_string_from_iter(model, &iter);
+
+	client_set_policy(index, CLIENT_POLICY_ASK);
+}
+
 static void dhcp_callback(GtkWidget *button, gpointer user_data)
 {
 	GtkTreeSelection *selection = user_data;
@@ -512,6 +531,11 @@ static GtkWidget *create_window(void)
 	gtk_container_add(GTK_CONTAINER(buttonbox), button);
 	g_signal_connect(G_OBJECT(button), "clicked",
 				G_CALLBACK(policy_auto), selection);
+
+	button = gtk_button_new_with_label("Policy Ask");
+	gtk_container_add(GTK_CONTAINER(buttonbox), button);
+	g_signal_connect(G_OBJECT(button), "clicked",
+				G_CALLBACK(policy_ask), selection);
 
 	buttonbox = gtk_vbutton_box_new();
 	gtk_button_box_set_layout(GTK_BUTTON_BOX(buttonbox),

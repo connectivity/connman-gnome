@@ -140,6 +140,8 @@ static guint string_to_policy(const char *policy)
 		return CLIENT_POLICY_IGNORE;
 	else if (g_ascii_strcasecmp(policy, "auto") == 0)
 		return CLIENT_POLICY_AUTO;
+	else if (g_ascii_strcasecmp(policy, "ask") == 0)
+		return CLIENT_POLICY_ASK;
 	else
 		return CLIENT_POLICY_UNKNOWN;
 }
@@ -153,6 +155,8 @@ static const char *policy_to_string(guint policy)
 		return "ignore";
 	case CLIENT_POLICY_AUTO:
 		return "auto";
+	case CLIENT_POLICY_ASK:
+		return "ask";
 	default:
 		return "unknown";
 	}
