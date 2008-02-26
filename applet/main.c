@@ -208,6 +208,7 @@ static gboolean menu_callback(GtkMenu *menu)
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
 
 	item = gtk_menu_item_new_with_label(_("Join Other Network..."));
+	gtk_widget_set_sensitive(item, FALSE);
 	//g_signal_connect(item, "activate",
 	//			G_CALLBACK(join_callback), NULL);
 	gtk_widget_show(item);
