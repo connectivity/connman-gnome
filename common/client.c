@@ -68,7 +68,6 @@ static void execute_state_callback(void)
 
 		if (active == TRUE) {
 			switch (new_state) {
-			case CLIENT_STATE_SCANNING:
 			case CLIENT_STATE_CARRIER:
 			case CLIENT_STATE_CONNECT:
 			case CLIENT_STATE_CONNECTED:
