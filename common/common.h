@@ -19,7 +19,7 @@
  *
  */
 
-#define CONNMAN_SERVICE    "org.freedesktop.connman"
+#define CONNMAN_SERVICE    "org.moblin.connman"
 #define CONNMAN_INSTANCE   CONNMAN_SERVICE ".Instance"
 #define CONNMAN_MANAGER    CONNMAN_SERVICE ".Manager"
-#define CONNMAN_INTERFACE  CONNMAN_SERVICE ".Interface"
+#define CONNMAN_ELEMENT    CONNMAN_SERVICE ".Element"

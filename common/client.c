@@ -588,7 +588,7 @@ static void add_interface(DBusGProxy *manager, const char *path)
 		cont = gtk_tree_model_iter_next(model, &iter);
 	}
 
-	proxy = dbus_g_proxy_new_from_proxy(manager, CONNMAN_INTERFACE, path);
+	proxy = dbus_g_proxy_new_from_proxy(manager, CONNMAN_ELEMENT, path);
 
 	gtk_tree_store_insert_with_values(store, &iter, NULL, -1,
 					CLIENT_COLUMN_ACTIVE, TRUE,
