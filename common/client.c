@@ -223,6 +223,7 @@ static void handle_ipv4(GHashTable *hash, GtkTreeIter *iter)
 	}
 }
 
+#if 0
 static void ipv4_notify(DBusGProxy *object,
 				DBusGProxyCall *call, void *user_data)
 {
@@ -252,6 +253,7 @@ static void ipv4_notify(DBusGProxy *object,
 
 	handle_ipv4(hash, &iter);
 }
+#endif
 
 static void append_network(GHashTable *hash, GtkTreeIter *parent)
 {
@@ -454,6 +456,7 @@ static void update_element(DBusGProxy *proxy,
 
 	index = gtk_tree_model_get_string_from_iter(model, iter);
 
+#if 0
 	call = dbus_g_proxy_begin_call_with_timeout(proxy,
 					"GetNetwork", network_notify,
 					index, g_free, 2000, G_TYPE_INVALID);
@@ -463,6 +466,7 @@ static void update_element(DBusGProxy *proxy,
 	call = dbus_g_proxy_begin_call_with_timeout(proxy,
 					"GetIPv4", ipv4_notify,
 					index, g_free, 2000, G_TYPE_INVALID);
+#endif
 }
 
 static void state_changed(DBusGProxy *proxy, const char *state,
