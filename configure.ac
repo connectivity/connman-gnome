@@ -55,8 +55,8 @@ AC_SUBST(DBUS_LIBS)
 DBUS_BINDING_TOOL="dbus-binding-tool"
 AC_SUBST(DBUS_BINDING_TOOL)
 
-PKG_CHECK_MODULES(GTK, gtk+-2.0 >= 2.12, dummy=yes,
-				AC_MSG_ERROR(gtk+ >= 2.12 is required))
+PKG_CHECK_MODULES(GTK, gtk+-2.0 >= 2.8, dummy=yes,
+				AC_MSG_ERROR(gtk+ >= 2.8 is required))
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 
