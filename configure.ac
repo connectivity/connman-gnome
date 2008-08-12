@@ -30,6 +30,23 @@ AC_DEFINE_UNQUOTED(GETTEXT_PACKAGE, "$GETTEXT_PACKAGE",
 AM_GLIB_GNU_GETTEXT
 IT_PROG_INTLTOOL([0.35.0])
 
+AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],
+			[enable compiling with debugging information]), [
+	if (test "${enableval}" = "yes" &&
+				test "${ac_cv_prog_cc_g}" = "yes"); then
+		CFLAGS="$CFLAGS -g -O0"
+	fi
+])
+
+AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
+			[enable position independent executables flag]), [
+	if (test "${enableval}" = "yes" &&
+				test "${ac_cv_prog_cc_pie}" = "yes"); then
+		CFLAGS="$CFLAGS -fPIE"
+		LDFLAGS="$LDFLAGS -pie"
+	fi
+])
+
 PKG_CHECK_MODULES(DBUS, dbus-glib-1 >= 0.70, dummy=yes,
 				AC_MSG_ERROR(dbus-glib > = 0.70 is required))
 AC_SUBST(DBUS_CFLAGS)
