@@ -101,9 +101,9 @@ static void execute_state_callback(void)
 
 static guint string_to_type(const char *type)
 {
-	if (g_ascii_strcasecmp(type, "80203") == 0)
+	if (g_ascii_strcasecmp(type, "ethernet") == 0)
 		return CLIENT_TYPE_80203;
-	else if (g_ascii_strcasecmp(type, "80211") == 0)
+	else if (g_ascii_strcasecmp(type, "wifi") == 0)
 		return CLIENT_TYPE_80211;
 	else
 		return CLIENT_TYPE_UNKNOWN;
@@ -391,6 +391,14 @@ static void properties_notify(DBusGProxy *object,
 		return;
 
 	value = g_hash_table_lookup(hash, "Type");
+	if (value == NULL)
+		return;
+
+	str = g_value_get_string(value);
+	if (str == NULL || g_str_equal(str, "device") == FALSE)
+		return;
+
+	value = g_hash_table_lookup(hash, "Subtype");
 	if (value != NULL) {
 		str = g_value_get_string(value);
 		type = string_to_type(str);
@@ -432,7 +440,7 @@ static void properties_notify(DBusGProxy *object,
 	execute_state_callback();
 }
 
-static void update_interface(DBusGProxy *proxy,
+static void update_element(DBusGProxy *proxy,
 				GtkTreeModel *model, GtkTreeIter *iter)
 {
 	DBusGProxyCall *call;
@@ -554,7 +562,7 @@ static void signal_closure(gpointer user_data, GClosure *closure)
 	g_free(user_data);
 }
 
-static void add_interface(DBusGProxy *manager, const char *path)
+static void add_element(DBusGProxy *manager, const char *path)
 {
 	GtkTreeModel *model = GTK_TREE_MODEL(store);
 	GtkTreeIter iter;
@@ -581,7 +589,7 @@ static void add_interface(DBusGProxy *manager, const char *path)
 					CLIENT_COLUMN_ACTIVE, TRUE,
 					CLIENT_COLUMN_STATE,
 						CLIENT_STATE_UNKNOWN, -1);
-			update_interface(proxy, model, &iter);
+			update_element(proxy, model, &iter);
 			return;
 		}
 
@@ -650,18 +658,18 @@ static void add_interface(DBusGProxy *manager, const char *path)
 	dbus_g_proxy_connect_signal(proxy, "IPv4Changed",
 			G_CALLBACK(ipv4_changed), index, signal_closure);
 
-	update_interface(proxy, model, &iter);
+	update_element(proxy, model, &iter);
 }
 
-static void interface_added(DBusGProxy *manager, const char *path,
+static void element_added(DBusGProxy *manager, const char *path,
 							gpointer user_data)
 {
-	add_interface(manager, path);
+	add_element(manager, path);
 
 	execute_state_callback();
 }
 
-static gboolean disable_interface(GtkTreeModel *model, GtkTreePath *path,
+static gboolean disable_element(GtkTreeModel *model, GtkTreePath *path,
 					GtkTreeIter *iter, gpointer user_data)
 {
 	DBusGProxy *proxy;
@@ -690,11 +698,11 @@ static gboolean disable_interface(GtkTreeModel *model, GtkTreePath *path,
 	return FALSE;
 }
 
-static void interface_removed(DBusGProxy *manager, const char *path,
+static void element_removed(DBusGProxy *manager, const char *path,
 							gpointer user_data)
 {
 	gtk_tree_model_foreach(GTK_TREE_MODEL(store),
-					disable_interface, (gpointer) path);
+					disable_element, (gpointer) path);
 
 	execute_state_callback();
 }
@@ -708,7 +716,7 @@ static DBusGProxy *create_manager(DBusGConnection *conn)
 	manager = dbus_g_proxy_new_for_name(conn, CONNMAN_SERVICE,
 							"/", CONNMAN_MANAGER);
 
-	dbus_g_proxy_call(manager, "ListInterfaces", &error, G_TYPE_INVALID,
+	dbus_g_proxy_call(manager, "ListElements", &error, G_TYPE_INVALID,
 			DBUS_TYPE_G_OBJECT_PATH_ARRAY, &array, G_TYPE_INVALID);
 
 	if (error == NULL) {
@@ -716,23 +724,23 @@ static DBusGProxy *create_manager(DBusGConnection *conn)
 
 		for (i = 0; i < array->len; i++) {
 			gchar *path = g_ptr_array_index(array, i);
-			add_interface(manager, path);
+			add_element(manager, path);
 			g_free(path);
 		}
 	} else
 		g_error_free(error);
 
-	dbus_g_proxy_add_signal(manager, "InterfaceAdded",
+	dbus_g_proxy_add_signal(manager, "ElementAdded",
 				DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
 
-	dbus_g_proxy_connect_signal(manager, "InterfaceAdded",
-				G_CALLBACK(interface_added), NULL, NULL);
+	dbus_g_proxy_connect_signal(manager, "ElementAdded",
+				G_CALLBACK(element_added), NULL, NULL);
 
-	dbus_g_proxy_add_signal(manager, "InterfaceRemoved",
+	dbus_g_proxy_add_signal(manager, "ElementRemoved",
 				DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
 
-	dbus_g_proxy_connect_signal(manager, "InterfaceRemoved",
-				G_CALLBACK(interface_removed), NULL, NULL);
+	dbus_g_proxy_connect_signal(manager, "ElementRemoved",
+				G_CALLBACK(element_removed), NULL, NULL);
 
 	return manager;
 }
@@ -742,7 +750,7 @@ static void name_owner_changed(DBusGProxy *system, const char *name,
 {
 	if (strcmp(name, CONNMAN_SERVICE) == 0 && *new == '\0')
 		gtk_tree_model_foreach(GTK_TREE_MODEL(store),
-						disable_interface, NULL);
+						disable_element, NULL);
 
 	execute_state_callback();
 }
