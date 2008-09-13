@@ -47,8 +47,8 @@ AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
 	fi
 ])
 
-PKG_CHECK_MODULES(DBUS, dbus-glib-1 >= 0.70, dummy=yes,
-				AC_MSG_ERROR(dbus-glib > = 0.70 is required))
+PKG_CHECK_MODULES(DBUS, dbus-glib-1 >= 0.73, dummy=yes,
+				AC_MSG_ERROR(dbus-glib > = 0.73 is required))
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
