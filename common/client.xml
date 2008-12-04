@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/">
+  <interface name="manager">
+    <method name="GetProperties">
+      <arg type="a{sv}" direction="out"/>
+    </method>
+  </interface>
+
+  <interface name="device">
+    <method name="GetProperties">
+      <arg type="a{sv}" direction="out"/>
+    </method>
+  </interface>
+
+  <interface name="network">
+    <method name="GetProperties">
+      <arg type="a{sv}" direction="out"/>
+    </method>
+  </interface>
+</node>
