@@ -60,5 +60,8 @@ PKG_CHECK_MODULES(GTK, gtk+-2.0 >= 2.8, dummy=yes,
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 
+GLIB_GENMARSHAL=`$PKG_CONFIG --variable=glib_genmarshal glib-2.0`
+AC_SUBST(GLIB_GENMARSHAL)
+
 AC_OUTPUT(Makefile common/Makefile applet/Makefile properties/Makefile
 					icons/Makefile po/Makefile.in)
