@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/">
+  <interface name="connman">
+    <method name="GetProperties">
+      <arg type="a{sv}" direction="out"/>
+    </method>
+    <method name="SetProperty">
+      <arg type="s"/>
+      <arg type="v"/>
+    </method>
+    <method name="ProposeScan">
+    </method>
+    <method name="Connect">
+    </method>
+    <method name="Disconnect">
+    </method>
+  </interface>
+</node>

@@ -27,8 +27,11 @@ po/POTFILES
 po/stamp-it
 po/.intltool-merge-cache
 
-common/instance-glue.h
 common/test-client
+common/connman-demo
 applet/connman-applet
 properties/connman-properties
+marshal.h
+marshal.c
+*-glue.h
 *.desktop

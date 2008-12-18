@@ -27,8 +27,10 @@
 
 #include <gtk/gtk.h>
 
-#include "common.h"
 #include "instance.h"
+
+#define CONNMAN_SERVICE    "org.moblin.connman"
+#define CONNMAN_INSTANCE   CONNMAN_SERVICE ".Instance"
 
 static DBusGConnection *connection;
 
