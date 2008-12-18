@@ -22,7 +22,7 @@ CLEANFILES = $(BUILT_SOURCES)
 
 AM_CFLAGS = @DBUS_CFLAGS@ @GTK_CFLAGS@
 
-EXTRA_DIST = marshal.list instance.xml connman-client.xml
+EXTRA_DIST = marshal.list instance.xml connman-dbus.xml
 
 MAINTAINERCLEANFILES = Makefile.in
 
