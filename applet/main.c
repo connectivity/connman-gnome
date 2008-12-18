@@ -23,31 +23,53 @@
 #include <config.h>
 #endif
 
-#include <stdlib.h>
-#include <string.h>
-#include <signal.h>
-
 #include <dbus/dbus-glib.h>
-
 #include <glib/gi18n.h>
-#include <gtk/gtk.h>
 
-#include "client.h"
+#include "connman-client.h"
+
 #include "status.h"
 
-static void close_callback(GtkWidget *dialog, gpointer user_data)
+static ConnmanClient *client;
+
+static void open_uri(GtkWindow *parent, const char *uri)
 {
-	gtk_widget_destroy(dialog);
+	GtkWidget *dialog;
+	GdkScreen *screen;
+	GError *error = NULL;
+	gchar *cmdline;
+
+	screen = gtk_window_get_screen(parent);
+
+	cmdline = g_strconcat("xdg-open ", uri, NULL);
+
+	if (gdk_spawn_command_line_on_screen(screen,
+						cmdline, &error) == FALSE) {
+		dialog = gtk_message_dialog_new(parent,
+			GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_CLOSE, "%s", error->message);
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		g_error_free(error);
+	}
+
+	g_free(cmdline);
 }
 
 static void about_url_hook(GtkAboutDialog *dialog,
 					const gchar *url, gpointer data)
 {
+	open_uri(GTK_WINDOW(dialog), url);
 }
 
 static void about_email_hook(GtkAboutDialog *dialog,
 					const gchar *email, gpointer data)
 {
+	gchar *uri;
+
+	uri = g_strconcat("mailto:", email, NULL);
+	open_uri(GTK_WINDOW(dialog), uri);
+	g_free(uri);
 }
 
 static void about_callback(GtkWidget *item, gpointer user_data)
@@ -56,39 +78,31 @@ static void about_callback(GtkWidget *item, gpointer user_data)
 		"Marcel Holtmann <marcel@holtmann.org>",
 		NULL
 	};
-	GtkWidget *dialog;
-
-	dialog = gtk_about_dialog_new();
-
-	gtk_about_dialog_set_name(GTK_ABOUT_DIALOG(dialog),
-						_("Connection Manager"));
-	gtk_about_dialog_set_version(GTK_ABOUT_DIALOG(dialog), VERSION);
-	gtk_about_dialog_set_copyright(GTK_ABOUT_DIALOG(dialog),
-				"Copyright \xc2\xa9 2008 Intel Corporation");
-	gtk_about_dialog_set_comments(GTK_ABOUT_DIALOG(dialog),
-			_("A connection manager for the GNOME desktop"));
-	gtk_about_dialog_set_logo_icon_name(GTK_ABOUT_DIALOG(dialog),
-							"stock_internet");
 
 	gtk_about_dialog_set_url_hook(about_url_hook, NULL, NULL);
 	gtk_about_dialog_set_email_hook(about_email_hook, NULL, NULL);
 
-	gtk_about_dialog_set_authors(GTK_ABOUT_DIALOG(dialog), authors);
-	gtk_about_dialog_set_translator_credits(GTK_ABOUT_DIALOG(dialog),
-						_("translator-credits"));
-
-	g_signal_connect(dialog, "close", G_CALLBACK(close_callback), NULL);
-	g_signal_connect(dialog, "response", G_CALLBACK(close_callback), NULL);
-
-	gtk_widget_show_all(dialog);
+	gtk_show_about_dialog(NULL, "version", VERSION,
+		"copyright", "Copyright \xc2\xa9 2008 Intel Corporation",
+		"comments", _("A connection manager for the GNOME desktop"),
+		"authors", authors,
+		"translator-credits", _("translator-credits"),
+		"logo-icon-name", "network-wireless", NULL);
 }
 
-static void settings_callback(GObject *widget, gpointer user_data)
+static void settings_callback(GtkWidget *item, gpointer user_data)
 {
 	const char *command = "connman-properties";
 
 	if (g_spawn_command_line_async(command, NULL) == FALSE)
 		g_printerr("Couldn't execute command: %s\n", command);
+}
+
+static void activate_callback(GtkWidget *item, gpointer user_data)
+{
+	const gchar *path = user_data;
+
+	connman_client_connect(client, path);
 }
 
 static GtkWidget *create_popupmenu(void)
@@ -112,7 +126,7 @@ static GtkWidget *create_popupmenu(void)
 }
 
 static GtkWidget *append_menuitem(GtkMenu *menu, const char *ssid,
-					gboolean security, double strength)
+					guint security, guint strength)
 {
 	GtkWidget *item;
 	GtkWidget *hbox;
@@ -136,14 +150,15 @@ static GtkWidget *append_menuitem(GtkMenu *menu, const char *ssid,
 	image = gtk_image_new_from_stock(GTK_STOCK_DIALOG_AUTHENTICATION,
 							GTK_ICON_SIZE_MENU);
 	gtk_misc_set_alignment(GTK_MISC(image), 1.0, 0.5);
-	if (security == TRUE) {
+	if (security != CONNMAN_SECURITY_NONE) {
 		gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
 		gtk_widget_show(image);
 	}
 
 	progress = gtk_progress_bar_new();
 	gtk_widget_set_size_request(progress, 100, -1);
-	gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress), strength);
+	gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress),
+						(double) strength / 100);
 	gtk_box_pack_end(GTK_BOX(hbox), progress, FALSE, TRUE, 0);
 	gtk_widget_show(progress);
 
@@ -163,19 +178,27 @@ static void enumerate_networks(GtkMenu *menu,
 
 	while (cont == TRUE) {
 		GtkWidget *item;
-		gboolean security;
-		guint signal;
-		gchar *str;
+		DBusGProxy *proxy;
+		guint strength, security;
+		gchar *name, *path;
+		gboolean connected;
 
 		gtk_tree_model_get(model, &iter,
-				CLIENT_COLUMN_SIGNAL, &signal,
-				CLIENT_COLUMN_NETWORK_ESSID, &str,
-				CLIENT_COLUMN_NETWORK_SECURITY, &security, -1);
+				CONNMAN_COLUMN_PROXY, &proxy,
+				CONNMAN_COLUMN_NAME, &name,
+				CONNMAN_COLUMN_ENABLED, &connected,
+				CONNMAN_COLUMN_STRENGTH, &strength,
+				CONNMAN_COLUMN_SECURITY, &security, -1);
 
-		item = append_menuitem(menu, str, security,
-						(double) signal / 100);
+		item = append_menuitem(menu, name, security, strength);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item),
+								connected);
 
-		g_free(str);
+		path = g_strdup(dbus_g_proxy_get_path(proxy));
+		g_signal_connect(item, "activate",
+					G_CALLBACK(activate_callback), path);
+
+		g_free(name);
 
 		cont = gtk_tree_model_iter_next(model, &iter);
 	}
@@ -188,29 +211,29 @@ static gboolean menu_callback(GtkMenu *menu)
 	GtkWidget *item;
 	gboolean cont;
 
-	client_propose_scanning();
+	connman_client_propose_scan(client, NULL);
 
-	model = client_get_active_model();
+	model = connman_client_get_device_network_model(client);
 
 	cont = gtk_tree_model_get_iter_first(model, &parent);
 
 	while (cont == TRUE) {
 		guint type;
-		gchar *str;
+		gchar *name;
 
 		gtk_tree_model_get(model, &parent,
-					CLIENT_COLUMN_TYPE, &type,
-					CLIENT_COLUMN_PRODUCT, &str, -1);
+					CONNMAN_COLUMN_TYPE, &type,
+					CONNMAN_COLUMN_NAME, &name, -1);
 
 		switch (type) {
-		case CLIENT_TYPE_80211:
+		case CONNMAN_TYPE_WIFI:
 			enumerate_networks(menu, model, &parent);
 			break;
 		default:
 			break;
 		}
 
-		g_free(str);
+		g_free(name);
 
 		cont = gtk_tree_model_iter_next(model, &parent);
 	}
@@ -231,63 +254,90 @@ static gboolean menu_callback(GtkMenu *menu)
 	return TRUE;
 }
 
-static void state_callback(guint state, gint signal)
+static void update_status(GtkTreeModel *model)
 {
-	switch (state) {
-	case CLIENT_STATE_OFF:
-	case CLIENT_STATE_ENABLED:
-	case CLIENT_STATE_SHUTDOWN:
+	GtkTreeIter iter;
+	gboolean cont;
+	gboolean online = FALSE;
+	guint strength, type;
+
+	cont = gtk_tree_model_get_iter_first(model, &iter);
+
+	while (cont == TRUE) {
+		gboolean enabled;
+
+		gtk_tree_model_get(model, &iter,
+					CONNMAN_COLUMN_TYPE, &type,
+					CONNMAN_COLUMN_STRENGTH, &strength,
+					CONNMAN_COLUMN_ENABLED, &enabled, -1);
+
+		online = TRUE;
+
+		if (enabled == TRUE)
+			break;
+
+		cont = gtk_tree_model_iter_next(model, &iter);
+	}
+
+	if (online == FALSE) {
 		status_offline();
-		break;
-	case CLIENT_STATE_SCANNING:
-	case CLIENT_STATE_CONNECT:
-		status_prepare();
-		break;
-	case CLIENT_STATE_CONNECTED:
-	case CLIENT_STATE_CARRIER:
-	case CLIENT_STATE_CONFIGURE:
-		status_config();
-		break;
-	case CLIENT_STATE_READY:
-		status_ready(signal);
+		return;
+	}
+
+	switch (type) {
+	case CONNMAN_TYPE_WIFI:
+	case CONNMAN_TYPE_WIMAX:
+		status_ready(strength / 25);
 		break;
 	default:
-		status_hide();
+		status_ready(-1);
 		break;
 	}
 }
 
-static void sig_term(int sig)
+static void connection_added(GtkTreeModel *model, GtkTreePath *path,
+					GtkTreeIter *iter, gpointer user_data)
 {
-	gtk_main_quit();
+	update_status(model);
+}
+
+static void connection_removed(GtkTreeModel *model, GtkTreePath *path,
+							gpointer user_data)
+{
+	update_status(model);
 }
 
 int main(int argc, char *argv[])
 {
-	struct sigaction sa;
+	GtkTreeModel *model;
 
 	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
 	bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
 	textdomain(GETTEXT_PACKAGE);
 
 	gtk_init(&argc, &argv);
+	gtk_window_set_default_icon_name("network-wireless");
 
-	gtk_window_set_default_icon_name("stock_internet");
+	g_set_application_name(_("Connection Manager"));
 
 	status_init(menu_callback, create_popupmenu());
 
-	client_init(NULL);
+	client = connman_client_new();
+	model = connman_client_get_connection_model(client);
 
-	client_set_state_callback(state_callback);
+	g_signal_connect(G_OBJECT(model), "row-inserted",
+					G_CALLBACK(connection_added), NULL);
+	g_signal_connect(G_OBJECT(model), "row-changed",
+					G_CALLBACK(connection_added), NULL);
+	g_signal_connect(G_OBJECT(model), "row-deleted",
+					G_CALLBACK(connection_removed), NULL);
 
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = sig_term;
-	sigaction(SIGINT, &sa, NULL);
-	sigaction(SIGTERM, &sa, NULL);
+	update_status(model);
 
 	gtk_main();
 
-	client_cleanup();
+	g_object_unref(model);
+	g_object_unref(client);
 
 	status_cleanup();
 
