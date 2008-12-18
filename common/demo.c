@@ -336,7 +336,7 @@ static GtkWidget *create_right(void)
 static gboolean delete_callback(GtkWidget *window, GdkEvent *event,
 							gpointer user_data)
 {
-	gtk_widget_destroy(GTK_WIDGET(window));
+	gtk_widget_destroy(window);
 
 	gtk_main_quit();
 

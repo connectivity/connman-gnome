@@ -145,7 +145,7 @@ static GtkWidget *create_tree(void)
 static gboolean delete_callback(GtkWidget *window, GdkEvent *event,
 							gpointer user_data)
 {
-	gtk_widget_destroy(GTK_WIDGET(window));
+	gtk_widget_destroy(window);
 
 	gtk_main_quit();
 
@@ -156,7 +156,7 @@ static void close_callback(GtkWidget *button, gpointer user_data)
 {
 	GtkWidget *window = user_data;
 
-	gtk_widget_destroy(GTK_WIDGET(window));
+	gtk_widget_destroy(window);
 
 	gtk_main_quit();
 }
