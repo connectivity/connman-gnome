@@ -352,6 +352,31 @@ void connman_client_propose_scan(ConnmanClient *client, const gchar *device)
 	g_object_unref(proxy);
 }
 
+static gboolean network_disconnect(GtkTreeModel *model, GtkTreePath *path,
+					GtkTreeIter *iter, gpointer user_data)
+{
+	ConnmanClient *client = user_data;
+	DBusGProxy *proxy;
+	gboolean enabled;
+
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy,
+					CONNMAN_COLUMN_ENABLED, &enabled, -1);
+
+	if (proxy == NULL)
+		return FALSE;
+
+	if (g_str_equal(dbus_g_proxy_get_interface(proxy),
+					CONNMAN_NETWORK_INTERFACE) == FALSE)
+		return FALSE;
+
+	if (enabled == TRUE)
+		connman_client_disconnect(client, dbus_g_proxy_get_path(proxy));
+
+	g_object_unref(proxy);
+
+	return enabled;
+}
+
 void connman_client_connect(ConnmanClient *client, const gchar *network)
 {
 	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
@@ -361,6 +386,9 @@ void connman_client_connect(ConnmanClient *client, const gchar *network)
 
 	if (network == NULL)
 		return;
+
+	gtk_tree_model_foreach(GTK_TREE_MODEL(priv->store),
+						network_disconnect, client);
 
 	proxy = connman_dbus_get_proxy(priv->store, network);
 	if (proxy == NULL)
