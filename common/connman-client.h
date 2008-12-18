@@ -55,6 +55,7 @@ ConnmanClient *connman_client_new(void);
 
 GtkTreeModel *connman_client_get_model(ConnmanClient *client);
 GtkTreeModel *connman_client_get_device_model(ConnmanClient *client);
+GtkTreeModel *connman_client_get_device_network_model(ConnmanClient *client);
 GtkTreeModel *connman_client_get_network_model(ConnmanClient *client,
 							const gchar *device);
 

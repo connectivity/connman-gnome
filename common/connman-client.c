@@ -198,6 +198,43 @@ GtkTreeModel *connman_client_get_device_model(ConnmanClient *client)
 	return model;
 }
 
+static gboolean device_network_filter(GtkTreeModel *model,
+					GtkTreeIter *iter, gpointer user_data)
+{
+	DBusGProxy *proxy;
+	gboolean active;
+
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
+
+	if (proxy == NULL)
+		return FALSE;
+
+	active = g_str_equal(CONNMAN_DEVICE_INTERFACE,
+					dbus_g_proxy_get_interface(proxy));
+	if (active == FALSE)
+		active = g_str_equal(CONNMAN_NETWORK_INTERFACE,
+					dbus_g_proxy_get_interface(proxy));
+
+	g_object_unref(proxy);
+
+	return active;
+}
+
+GtkTreeModel *connman_client_get_device_network_model(ConnmanClient *client)
+{
+	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
+	GtkTreeModel *model;
+
+	DBG("client %p", client);
+
+	model = gtk_tree_model_filter_new(GTK_TREE_MODEL(priv->store), NULL);
+
+	gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(model),
+					device_network_filter, NULL, NULL);
+
+	return model;
+}
+
 static gboolean network_filter(GtkTreeModel *model,
 					GtkTreeIter *iter, gpointer user_data)
 {
