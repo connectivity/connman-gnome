@@ -438,6 +438,10 @@ static void connection_changed(DBusGProxy *proxy, const char *property,
 		gboolean enabled = g_value_get_boolean(value);
 		gtk_tree_store_set(store, &iter,
 					CONNMAN_COLUMN_ENABLED, enabled, -1);
+	} else if (g_str_equal(property, "Strength") == TRUE) {
+		guint strength = g_value_get_uchar(value);
+		gtk_tree_store_set(store, &iter,
+					CONNMAN_COLUMN_STRENGTH, strength, -1);
 	}
 }
 
@@ -447,7 +451,7 @@ static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
 	GtkTreeStore *store = user_data;
 	GValue *value;
 	const gchar *name;
-	guint type;
+	guint type, strength;
 	gboolean enabled;
 	GtkTreeIter iter;
 
@@ -456,6 +460,9 @@ static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
 
 	value = g_hash_table_lookup(hash, "Type");
 	type = get_type(value);
+
+	value = g_hash_table_lookup(hash, "Strength");
+	strength = value ? g_value_get_uchar(value) : 0;
 
 	value = g_hash_table_lookup(hash, "Default");
 	enabled = value ? g_value_get_boolean(value) : FALSE;
@@ -466,7 +473,8 @@ static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
 		gtk_tree_store_insert_with_values(store, &iter, NULL, -1,
 					CONNMAN_COLUMN_PROXY, proxy,
 					CONNMAN_COLUMN_TYPE, type,
-					CONNMAN_COLUMN_ENABLED, enabled, -1);
+					CONNMAN_COLUMN_ENABLED, enabled,
+					CONNMAN_COLUMN_STRENGTH, strength, -1);
 
 		dbus_g_proxy_add_signal(proxy, "PropertyChanged",
 				G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
@@ -476,7 +484,8 @@ static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
 		gtk_tree_store_set(store, &iter,
 					CONNMAN_COLUMN_NAME, name,
 					CONNMAN_COLUMN_TYPE, type,
-					CONNMAN_COLUMN_ENABLED, enabled, -1);
+					CONNMAN_COLUMN_ENABLED, enabled,
+					CONNMAN_COLUMN_STRENGTH, strength, -1);
 
 done:
 	g_object_unref(proxy);
