@@ -276,6 +276,20 @@ static void status_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 	g_object_set(cell, "visible", enabled, NULL);
 }
 
+static void security_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
+			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
+{
+	guint security;
+
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_SECURITY, &security, -1);
+
+	if (security == CONNMAN_SECURITY_NONE)
+		g_object_set(cell, "icon-name", NULL, NULL);
+	else
+		g_object_set(cell, "icon-name",
+					GTK_STOCK_DIALOG_AUTHENTICATION, NULL);
+}
+
 static GtkWidget *create_right(void)
 {
 	GtkWidget *mainbox;
@@ -322,6 +336,11 @@ static GtkWidget *create_right(void)
 	gtk_tree_view_column_pack_start(column, renderer, TRUE);
 	gtk_tree_view_column_add_attribute(column, renderer,
 					"text", CONNMAN_COLUMN_NAME);
+
+	renderer = gtk_cell_renderer_pixbuf_new();
+	gtk_tree_view_column_pack_end(column, renderer, FALSE);
+	gtk_tree_view_column_set_cell_data_func(column, renderer,
+					security_to_icon, NULL, NULL);
 
 	tree_networks = tree;
 
