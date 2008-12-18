@@ -450,7 +450,6 @@ static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
 {
 	GtkTreeStore *store = user_data;
 	GValue *value;
-	const gchar *name;
 	guint type, strength;
 	gboolean enabled;
 	GtkTreeIter iter;
@@ -482,7 +481,6 @@ static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
 				G_CALLBACK(connection_changed), store, NULL);
 	} else
 		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_NAME, name,
 					CONNMAN_COLUMN_TYPE, type,
 					CONNMAN_COLUMN_ENABLED, enabled,
 					CONNMAN_COLUMN_STRENGTH, strength, -1);
