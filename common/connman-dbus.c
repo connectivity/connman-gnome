@@ -288,7 +288,9 @@ static void network_properties(DBusGProxy *proxy, GHashTable *hash,
 	guint strength, security;
 	GtkTreeIter iter, parent;
 
-	if (hash == NULL)
+	DBG("store %p proxy %p hash %p", store, proxy, hash);
+
+	if (error != NULL || hash == NULL)
 		goto done;
 
 	value = g_hash_table_lookup(hash, "Device");
@@ -380,7 +382,9 @@ static void device_properties(DBusGProxy *proxy, GHashTable *hash,
 	gboolean powered;
 	GtkTreeIter iter;
 
-	if (hash == NULL)
+	DBG("store %p proxy %p hash %p", store, proxy, hash);
+
+	if (error != NULL || hash == NULL)
 		goto done;
 
 	value = g_hash_table_lookup(hash, "Name");
@@ -525,6 +529,9 @@ static void manager_properties(DBusGProxy *proxy, GHashTable *hash,
 	gchar *state;
 
 	DBG("store %p proxy %p hash %p", store, proxy, hash);
+
+	if (error != NULL || hash == NULL)
+		return;
 
 	value = g_hash_table_lookup(hash, "State");
 	state = value ? g_value_dup_string(value) : NULL;
