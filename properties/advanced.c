@@ -23,10 +23,11 @@
 #include <config.h>
 #endif
 
+#include <dbus/dbus-glib.h>
 #include <glib/gi18n.h>
-#include <gtk/gtk.h>
 
-#include "client.h"
+#include "connman-client.h"
+
 #include "advanced.h"
 
 gboolean separator_function(GtkTreeModel *model,
@@ -45,51 +46,13 @@ gboolean separator_function(GtkTreeModel *model,
 	return result;
 }
 
-#if 0
 static void activate_callback(GtkWidget *button, gpointer user_data)
 {
-	struct config_data *data = user_data;
-	GtkTreeModel *model;
-	GtkTreeIter iter;
-	DBusGProxy *proxy;
-	GError *error = NULL;
-	const gchar *network, *passphrase;
-
-	gtk_tree_selection_get_selected(data->selection, &model, &iter);
-
-	gtk_tree_model_get(model, &iter, CLIENT_COLUMN_PROXY, &proxy, -1);
-
-	network = gtk_combo_box_get_active_text(GTK_COMBO_BOX(data->network.name));
-
-	passphrase = gtk_entry_get_text(GTK_ENTRY(data->network.passphrase));
-
-	dbus_g_proxy_call(proxy, "SetNetwork", &error,
-					G_TYPE_STRING, network,
-					G_TYPE_INVALID, G_TYPE_INVALID);
-
-	dbus_g_proxy_call(proxy, "SetPassphrase", &error,
-					G_TYPE_STRING, passphrase,
-					G_TYPE_INVALID, G_TYPE_INVALID);
-
-	dbus_g_proxy_call(proxy, "Enable", &error,
-					G_TYPE_INVALID, G_TYPE_INVALID);
-
-	if (error != NULL) {
-		g_printerr("Activate failed: %s\n", error->message);
-		g_error_free(error);
-	}
 }
 
 static void changed_callback(GtkWidget *editable, gpointer user_data)
 {
-	struct config_data *data = user_data;
-	const gchar *text;
-
-	text = gtk_combo_box_get_active_text(GTK_COMBO_BOX(data->network.name));
-
-	gtk_widget_set_sensitive(data->network.activate, *text != '\0');
 }
-#endif
 
 static void add_network(GtkWidget *mainbox, struct config_data *data)
 {
@@ -133,13 +96,11 @@ static void add_network(GtkWidget *mainbox, struct config_data *data)
 	gtk_table_attach_defaults(GTK_TABLE(table), button, 1, 2, 2, 3);
 	//data->network.activate = button;
 
-#if 0
 	g_signal_connect(G_OBJECT(combo), "changed",
 				G_CALLBACK(changed_callback), data);
 
 	g_signal_connect(G_OBJECT(button), "clicked",
 				G_CALLBACK(activate_callback), data);
-#endif
 }
 
 static void set_widgets(struct config_data *data, gboolean label,
@@ -167,22 +128,9 @@ static void set_widgets(struct config_data *data, gboolean label,
 
 static void config_callback(GtkWidget *widget, gpointer user_data)
 {
-	struct config_data *data = user_data;
 	gint active;
 
 	active = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-
-	switch (active) {
-	case 0:
-		set_widgets(data, TRUE, TRUE, FALSE);
-		break;
-	case 1:
-		set_widgets(data, TRUE, FALSE, TRUE);
-		break;
-	case 3:
-		set_widgets(data, FALSE, FALSE, FALSE);
-		break;
-	}
 }
 
 static void add_config(GtkWidget *mainbox, struct config_data *data)
@@ -334,7 +282,7 @@ void create_advanced_dialog(struct config_data *data, guint type)
 	g_signal_connect(G_OBJECT(button), "clicked",
 					G_CALLBACK(close_callback), dialog);
 
-	if (type == CLIENT_TYPE_80211) {
+	if (type == CONNMAN_TYPE_WIFI) {
 		widget = gtk_vbox_new(FALSE, 24);
 		gtk_container_set_border_width(GTK_CONTAINER(widget), 24);
 		gtk_notebook_append_page(GTK_NOTEBOOK(notebook), widget, NULL);
@@ -355,7 +303,7 @@ void create_advanced_dialog(struct config_data *data, guint type)
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook),
 						widget, _("DNS"));
 
-	if (type == CLIENT_TYPE_80203) {
+	if (type == CONNMAN_TYPE_ETHERNET) {
 		widget = gtk_label_new(NULL);
 		gtk_notebook_append_page(GTK_NOTEBOOK(notebook), widget, NULL);
 		gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook),

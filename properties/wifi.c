@@ -26,7 +26,8 @@
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
 
-#include "client.h"
+#include "connman-client.h"
+
 #include "advanced.h"
 
 static void changed_callback(GtkWidget *editable, gpointer user_data)
@@ -35,23 +36,9 @@ static void changed_callback(GtkWidget *editable, gpointer user_data)
 	gint active;
 
 	active = gtk_combo_box_get_active(GTK_COMBO_BOX(data->policy.config));
-
-	switch (active) {
-	case 0:
-		client_set_policy(data->index, CLIENT_POLICY_AUTO);
-		break;
-	case 1:
-		client_set_policy(data->index, CLIENT_POLICY_IGNORE);
-		break;
-	case 3:
-		client_set_policy(data->index, CLIENT_POLICY_OFF);
-		break;
-	default:
-		break;
-	}
 }
 
-void add_80203_policy(GtkWidget *mainbox, struct config_data *data)
+void add_wifi_policy(GtkWidget *mainbox, struct config_data *data)
 {
 	GtkWidget *vbox;
 	GtkWidget *table;
@@ -67,14 +54,13 @@ void add_80203_policy(GtkWidget *mainbox, struct config_data *data)
 	gtk_table_set_col_spacings(GTK_TABLE(table), 8);
 	gtk_box_pack_start(GTK_BOX(vbox), table, FALSE, FALSE, 0);
 
-	label = gtk_label_new(_("Configuration:"));
+	label = gtk_label_new(_("Network Name:"));
 	gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_RIGHT);
 	gtk_misc_set_alignment(GTK_MISC(label), 1.0, 0.5);
 	gtk_table_attach_defaults(GTK_TABLE(table), label, 0, 1, 0, 1);
 
 	combo = gtk_combo_box_new_text();
-	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Automatically");
-	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Ignore Interface");
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Guest");
 	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "");
 	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Off");
 	gtk_combo_box_set_row_separator_func(GTK_COMBO_BOX(combo),
@@ -94,7 +80,7 @@ void add_80203_policy(GtkWidget *mainbox, struct config_data *data)
 				G_CALLBACK(changed_callback), data);
 }
 
-void update_80203_policy(struct config_data *data, guint policy)
+void update_wifi_policy(struct config_data *data, guint policy)
 {
 	GtkWidget *combo = data->policy.config;
 	gchar *info = NULL;
@@ -102,24 +88,7 @@ void update_80203_policy(struct config_data *data, guint policy)
 	g_signal_handlers_block_by_func(G_OBJECT(combo),
 					G_CALLBACK(changed_callback), data);
 
-	switch (policy) {
-	case CLIENT_POLICY_OFF:
-		gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 3);
-		break;
-	case CLIENT_POLICY_IGNORE:
-		gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 1);
-		info = g_strdup_printf(_("Ignore the interface and don't "
-				"make any attempts for configuration."));
-		break;
-	case CLIENT_POLICY_AUTO:
-		gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 0);
-		info = g_strdup_printf(_("Detect carrier and then "
-				"automatically configure the interface."));
-		break;
-	default:
-		gtk_combo_box_set_active(GTK_COMBO_BOX(combo), -1);
-		break;
-	}
+	/* change policy */
 
 	g_signal_handlers_unblock_by_func(G_OBJECT(combo),
 					G_CALLBACK(changed_callback), data);

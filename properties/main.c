@@ -23,18 +23,13 @@
 #include <config.h>
 #endif
 
-#include <stdlib.h>
-#include <string.h>
-#include <signal.h>
-
 #include <glib/gi18n.h>
-#include <gtk/gtk.h>
 
-#include "common.h"
-#include "client.h"
-#include "instance.h"
+#include "connman-client.h"
+
 #include "advanced.h"
 
+static ConnmanClient *client;
 static GtkWidget *interface_notebook;
 
 static void update_status(struct config_data *data,
@@ -45,40 +40,18 @@ static void update_status(struct config_data *data,
 	gchar *markup, *info = NULL;
 
 	switch (type) {
-	case CLIENT_TYPE_80203:
-		switch (state) {
-		case CLIENT_STATE_CARRIER:
-			str = N_("Cable Connected");
-			break;
-		case CLIENT_STATE_READY:
-			str = N_("Connected");
-			info = g_strdup_printf(_("%s is currently active "
-						"and has the IP address %s."),
-						N_("Ethernet"), address);
-			break;
-		default:
-			str = N_("Cable Unplugged");
-			info = g_strdup_printf(_("The cable for %s is "
+	case CONNMAN_TYPE_ETHERNET:
+		str = N_("Cable Unplugged");
+		info = g_strdup_printf(_("The cable for %s is "
 					"not plugged in."), N_("Ethernet"));
-			break;
-		}
 		break;
 
-	case CLIENT_TYPE_80211:
-		if (state == CLIENT_STATE_READY) {
-			str = N_("Connected");
-			info = g_strdup_printf(_("%s is connected to %s "
-					"and has the IP address %s."),
-					N_("Wireless"), network, address);
-		} else
-			str = N_("Not Connected");
+	case CONNMAN_TYPE_WIFI:
+		str = N_("Not Connected");
 		break;
 
 	default:
-		if (state == CLIENT_STATE_READY)
-			str = N_("Connected");
-		else
-			str = N_("Not Connected");
+		str = N_("Not Connected");
 		break;
 	}
 
@@ -90,64 +63,33 @@ static void update_status(struct config_data *data,
 
 	g_free(info);
 
-	if (policy == CLIENT_POLICY_AUTO)
-		gtk_widget_set_sensitive(GTK_WIDGET(data->button), TRUE);
-	else
-		gtk_widget_set_sensitive(GTK_WIDGET(data->button), FALSE);
-
 	switch (type) {
-	case CLIENT_TYPE_80203:
-		update_80203_policy(data, policy);
+	case CONNMAN_TYPE_ETHERNET:
+		update_ethernet_policy(data, policy);
 		break;
-	case CLIENT_TYPE_80211:
-		update_80211_policy(data, policy);
+	case CONNMAN_TYPE_WIFI:
+		update_wifi_policy(data, policy);
 		break;
 	default:
 		break;
 	}
 }
 
-static void update_ipv4(struct config_data *data, guint state,
-				const gchar *address, const gchar *netmask,
-							const gchar *gateway)
-{
-	if (state == CLIENT_STATE_READY) {
-		gtk_label_set_text(GTK_LABEL(data->ipv4.value[0]), address);
-		gtk_label_set_text(GTK_LABEL(data->ipv4.value[1]), netmask);
-		gtk_label_set_text(GTK_LABEL(data->ipv4.value[2]), gateway);
-	} else {
-		gtk_label_set_text(GTK_LABEL(data->ipv4.value[0]), NULL);
-		gtk_label_set_text(GTK_LABEL(data->ipv4.value[1]), NULL);
-		gtk_label_set_text(GTK_LABEL(data->ipv4.value[2]), NULL);
-	}
-}
-
 static void update_config(struct config_data *data)
 {
 	GtkTreeIter iter;
-	guint type, state, policy;
-	gchar *network, *address, *netmask, *gateway;
+	guint type;
+	gchar *network;
 
 	if (gtk_tree_model_get_iter_from_string(data->model,
 						&iter, data->index) == FALSE)
 		return;
 
 	gtk_tree_model_get(data->model, &iter,
-				CLIENT_COLUMN_TYPE, &type,
-				CLIENT_COLUMN_STATE, &state,
-				CLIENT_COLUMN_POLICY, &policy,
-				CLIENT_COLUMN_NETWORK_ESSID, &network,
-				CLIENT_COLUMN_IPV4_ADDRESS, &address,
-				CLIENT_COLUMN_IPV4_NETMASK, &netmask,
-				CLIENT_COLUMN_IPV4_GATEWAY, &gateway, -1);
-
-	update_status(data, type, state, policy, network, address);
-	update_ipv4(data, state, address, netmask, gateway);
+				CONNMAN_COLUMN_TYPE, &type,
+				CONNMAN_COLUMN_NAME, &network, -1);
 
 	g_free(network);
-	g_free(address);
-	g_free(netmask);
-	g_free(gateway);
 }
 
 static void advanced_callback(GtkWidget *button, gpointer user_data)
@@ -165,21 +107,16 @@ static struct config_data *create_config(GtkTreeModel *model,
 	GtkWidget *hbox;
 	GtkWidget *button;
 	struct config_data *data;
-	guint type, state, policy;
-	gchar *markup, *vendor, *product, *network, *address;
+	guint type, state = 0, policy = 0;
+	gchar *markup, *vendor = NULL, *product = NULL;
+	gchar *network = NULL, *address = NULL;
 
 	data = g_try_new0(struct config_data, 1);
 	if (data == NULL)
 		return NULL;
 
 	gtk_tree_model_get(model, iter,
-				CLIENT_COLUMN_TYPE, &type,
-				CLIENT_COLUMN_VENDOR, &vendor,
-				CLIENT_COLUMN_PRODUCT, &product,
-				CLIENT_COLUMN_STATE, &state,
-				CLIENT_COLUMN_POLICY, &policy,
-				CLIENT_COLUMN_NETWORK_ESSID, &network,
-				CLIENT_COLUMN_IPV4_ADDRESS, &address, -1);
+				CONNMAN_COLUMN_TYPE, &type, -1);
 
 	mainbox = gtk_vbox_new(FALSE, 6);
 	data->widget = mainbox;
@@ -198,11 +135,11 @@ static struct config_data *create_config(GtkTreeModel *model,
 	data->label = label;
 
 	switch (type) {
-	case CLIENT_TYPE_80203:
-		add_80203_policy(mainbox, data);
+	case CONNMAN_TYPE_ETHERNET:
+		add_ethernet_policy(mainbox, data);
 		break;
-	case CLIENT_TYPE_80211:
-		add_80211_policy(mainbox, data);
+	case CONNMAN_TYPE_WIFI:
+		add_wifi_policy(mainbox, data);
 		break;
 	default:
 		break;
@@ -238,7 +175,6 @@ static struct config_data *create_config(GtkTreeModel *model,
 
 	data->model = model;
 	data->index = gtk_tree_model_get_string_from_iter(model, iter);
-	client_set_userdata(data->index, data);
 
 	gtk_widget_show_all(mainbox);
 
@@ -254,20 +190,11 @@ static void select_callback(GtkTreeSelection *selection, gpointer user_data)
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	gboolean selected;
-	struct config_data *data;
-	guint state;
+	struct config_data *data = NULL;
 	gint page;
 
 	selected = gtk_tree_selection_get_selected(selection, &model, &iter);
 	if (selected == FALSE) {
-		gtk_widget_hide(interface_notebook);
-		return;
-	}
-
-	gtk_tree_model_get(model, &iter, CLIENT_COLUMN_STATE, &state,
-					CLIENT_COLUMN_USERDATA, &data, -1);
-
-	if (state == CLIENT_STATE_UNKNOWN) {
 		gtk_widget_hide(interface_notebook);
 		return;
 	}
@@ -294,87 +221,54 @@ static void select_callback(GtkTreeSelection *selection, gpointer user_data)
 static void row_changed(GtkTreeModel *model, GtkTreePath  *path,
 				GtkTreeIter  *iter, gpointer user_data)
 {
-	struct config_data *data;
-
-	gtk_tree_model_get(model, iter, CLIENT_COLUMN_USERDATA, &data, -1);
-
-	if (data != NULL)
-		update_config(data);
 }
 
 static void state_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
-	guint state;
+	gboolean powered;
 
-	gtk_tree_model_get(model, iter, CLIENT_COLUMN_STATE, &state, -1);
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_ENABLED, &powered, -1);
 
-	switch (state) {
-	case CLIENT_STATE_OFF:
-	case CLIENT_STATE_ENABLED:
-	case CLIENT_STATE_SCANNING:
-	case CLIENT_STATE_CONNECT:
-	case CLIENT_STATE_CONNECTED:
-	case CLIENT_STATE_CARRIER:
-	case CLIENT_STATE_CONFIGURE:
-	case CLIENT_STATE_SHUTDOWN:
-		g_object_set(cell, "icon-name", GTK_STOCK_NO, NULL);
-		break;
-	case CLIENT_STATE_READY:
+	if (powered == TRUE)
 		g_object_set(cell, "icon-name", GTK_STOCK_YES, NULL);
-		break;
-	default:
-		g_object_set(cell, "icon-name", GTK_STOCK_DIALOG_ERROR, NULL);
-		break;
-	}
+	else
+		g_object_set(cell, "icon-name", NULL, NULL);
 }
 
 static void type_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
-	guint type, state;
+	guint type;
+	gboolean powered;
 	gchar *markup;
 	const char *title, *info;
 
-	gtk_tree_model_get(model, iter, CLIENT_COLUMN_TYPE, &type,
-					CLIENT_COLUMN_STATE, &state, -1);
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_TYPE, &type,
+					CONNMAN_COLUMN_ENABLED, &powered, -1);
 
 	switch (type) {
-	case CLIENT_TYPE_80203:
+	case CONNMAN_TYPE_ETHERNET:
 		title = N_("Ethernet");
 		break;
-	case CLIENT_TYPE_80211:
+	case CONNMAN_TYPE_WIFI:
 		title = N_("Wireless");
+		break;
+	case CONNMAN_TYPE_WIMAX:
+		title = N_("WiMAX");
+		break;
+	case CONNMAN_TYPE_BLUETOOTH:
+		title = N_("Bluetooth");
 		break;
 	default:
 		title = N_("Unknown");
 		break;
 	}
 
-	switch (state) {
-	case CLIENT_STATE_OFF:
-	case CLIENT_STATE_ENABLED:
-	case CLIENT_STATE_SCANNING:
+	if (powered == TRUE)
 		info = N_("Not Connected");
-		break;
-	case CLIENT_STATE_CONNECT:
-		info = N_("Connecting");
-		break;
-	case CLIENT_STATE_CONNECTED:
-	case CLIENT_STATE_CARRIER:
-	case CLIENT_STATE_CONFIGURE:
-		info = N_("No IP Address");
-		break;
-	case CLIENT_STATE_READY:
-		info = N_("Connected");
-		break;
-	case CLIENT_STATE_SHUTDOWN:
-		info = N_("Shutdown");
-		break;
-	default:
-		info = N_("Unknown State");
-		break;
-	}
+	else
+		info = N_("Disabled");
 
 	markup = g_strdup_printf("<b>%s</b>\n<small>%s</small>", title, info);
 	g_object_set(cell, "markup", markup, NULL);
@@ -386,15 +280,20 @@ static void type_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 {
 	guint type;
 
-	gtk_tree_model_get(model, iter, CLIENT_COLUMN_TYPE, &type, -1);
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_TYPE, &type, -1);
 
 	switch (type) {
-	case CLIENT_TYPE_80203:
+	case CONNMAN_TYPE_ETHERNET:
 		g_object_set(cell, "icon-name", "network-wired",
 						"stock-size", 5, NULL);
 		break;
-	case CLIENT_TYPE_80211:
+	case CONNMAN_TYPE_WIFI:
+	case CONNMAN_TYPE_WIMAX:
 		g_object_set(cell, "icon-name", "network-wireless",
+						"stock-size", 5, NULL);
+		break;
+	case CONNMAN_TYPE_BLUETOOTH:
+		g_object_set(cell, "icon-name", "bluetooth",
 						"stock-size", 5, NULL);
 		break;
 	default:
@@ -441,6 +340,7 @@ static GtkWidget *create_interfaces(GtkWidget *window)
 	gtk_tree_view_append_column(GTK_TREE_VIEW(tree), column);
 
 	renderer = gtk_cell_renderer_pixbuf_new();
+	gtk_cell_renderer_set_fixed_size(renderer, 20, 45);
 	gtk_tree_view_column_pack_start(column, renderer, FALSE);
 	gtk_tree_view_column_set_cell_data_func(column, renderer,
 						state_to_icon, NULL, NULL);
@@ -462,7 +362,7 @@ static GtkWidget *create_interfaces(GtkWidget *window)
 	gtk_widget_set_no_show_all(interface_notebook, TRUE);
 	gtk_box_pack_start(GTK_BOX(hbox), interface_notebook, TRUE, TRUE, 0);
 
-	model = client_get_active_model();
+	model = connman_client_get_device_model(client);
 	gtk_tree_view_set_model(GTK_TREE_VIEW(tree), model);
 	g_object_unref(model);
 
@@ -477,12 +377,14 @@ static GtkWidget *create_interfaces(GtkWidget *window)
 	return mainbox;
 }
 
-static void delete_callback(GtkWidget *window, GdkEvent *event,
+static gboolean delete_callback(GtkWidget *window, GdkEvent *event,
 							gpointer user_data)
 {
 	gtk_widget_destroy(window);
 
 	gtk_main_quit();
+
+	return FALSE;
 }
 
 static void close_callback(GtkWidget *button, gpointer user_data)
@@ -529,22 +431,16 @@ static GtkWidget *create_window(void)
 	widget = create_interfaces(window);
 	gtk_notebook_prepend_page(GTK_NOTEBOOK(notebook), widget, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook),
-						widget, _("Interfaces"));
+						widget, _("Devices"));
 
 	gtk_widget_show_all(window);
 
 	return window;
 }
 
-static void sig_term(int sig)
-{
-	gtk_main_quit();
-}
-
 int main(int argc, char *argv[])
 {
 	GtkWidget *window;
-	struct sigaction sa;
 
 	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
 	bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
@@ -552,27 +448,15 @@ int main(int argc, char *argv[])
 
 	gtk_init(&argc, &argv);
 
-	gtk_window_set_default_icon_name("stock_internet");
+	gtk_window_set_default_icon_name("network-wireless");
 
-	if (instance_init(CONNMAN_SERVICE ".properties") == FALSE)
-		return 0;
-
-	client_init(NULL);
+	client = connman_client_new();
 
 	window = create_window();
 
-	instance_register(GTK_WINDOW(window));
-
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = sig_term;
-	sigaction(SIGINT, &sa, NULL);
-	sigaction(SIGTERM, &sa, NULL);
-
 	gtk_main();
 
-	client_cleanup();
-
-	instance_cleanup();
+	g_object_unref(client);
 
 	return 0;
 }

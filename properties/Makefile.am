@@ -1,7 +1,8 @@
 
 bin_PROGRAMS = connman-properties
 
-connman_properties_SOURCES = main.c advanced.h advanced.c 80203.c 80211.c
+connman_properties_SOURCES = main.c advanced.h advanced.c \
+						ethernet.c wifi.c
 
 connman_properties_LDADD = $(top_builddir)/common/libcommon.a \
 						@GTK_LIBS@ @DBUS_LIBS@

@@ -2,6 +2,6 @@ applet/main.c
 applet/connman-applet.desktop.in
 properties/main.c
 properties/advanced.c
-properties/80203.c
-properties/80211.c
+properties/ethernet.c
+properties/wifi.c
 properties/connman-properties.desktop.in
