@@ -235,42 +235,48 @@ GtkTreeModel *connman_client_get_device_network_model(ConnmanClient *client)
 	return model;
 }
 
-static gboolean network_filter(GtkTreeModel *model,
-					GtkTreeIter *iter, gpointer user_data)
-{
-	gchar *device = user_data;
-	DBusGProxy *proxy;
-	gboolean active;
-
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
-
-	if (proxy == NULL)
-		return FALSE;
-
-	if (g_str_equal(CONNMAN_NETWORK_INTERFACE,
-				dbus_g_proxy_get_interface(proxy)) == TRUE)
-		active = g_str_has_prefix(dbus_g_proxy_get_interface(proxy),
-								device);
-	else
-		active = FALSE;
-
-	g_object_unref(proxy);
-
-	return active;
-}
-
 GtkTreeModel *connman_client_get_network_model(ConnmanClient *client,
 							const gchar *device)
 {
 	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
 	GtkTreeModel *model;
+	GtkTreePath *path;
+	GtkTreeIter iter;
+	gboolean cont, found = FALSE;
 
 	DBG("client %p", client);
 
-	model = gtk_tree_model_filter_new(GTK_TREE_MODEL(priv->store), NULL);
+	cont = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(priv->store),
+									&iter);
 
-	gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(model),
-				network_filter, g_strdup(device), g_free);
+	while (cont == TRUE) {
+		DBusGProxy *proxy;
+
+		gtk_tree_model_get(GTK_TREE_MODEL(priv->store), &iter,
+					CONNMAN_COLUMN_PROXY, &proxy, -1);
+
+		if (g_str_equal(CONNMAN_DEVICE_INTERFACE,
+				dbus_g_proxy_get_interface(proxy)) == TRUE)
+			found = g_str_has_prefix(dbus_g_proxy_get_path(proxy),
+									device);
+
+		g_object_unref(proxy);
+
+		if (found == TRUE)
+			break;
+
+		cont = gtk_tree_model_iter_next(GTK_TREE_MODEL(priv->store),
+									&iter);
+	}
+
+	if (found == TRUE) {
+		path = gtk_tree_model_get_path(GTK_TREE_MODEL(priv->store),
+									&iter);
+		model = gtk_tree_model_filter_new(GTK_TREE_MODEL(priv->store),
+									path);
+		gtk_tree_path_free(path);
+	} else
+		model = NULL;
 
 	return model;
 }
