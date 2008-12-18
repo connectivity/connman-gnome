@@ -318,6 +318,9 @@ void connman_client_set_powered(ConnmanClient *client, const gchar *device,
 
 	DBG("client %p", client);
 
+	if (device == NULL)
+		return;
+
 	proxy = connman_dbus_get_proxy(priv->store, device);
 	if (proxy == NULL)
 		return;
@@ -337,6 +340,9 @@ void connman_client_propose_scan(ConnmanClient *client, const gchar *device)
 
 	DBG("client %p", client);
 
+	if (device == NULL)
+		return;
+
 	proxy = connman_dbus_get_proxy(priv->store, device);
 	if (proxy == NULL)
 		return;
@@ -353,6 +359,9 @@ void connman_client_connect(ConnmanClient *client, const gchar *network)
 
 	DBG("client %p", client);
 
+	if (network == NULL)
+		return;
+
 	proxy = connman_dbus_get_proxy(priv->store, network);
 	if (proxy == NULL)
 		return;
@@ -368,6 +377,9 @@ void connman_client_disconnect(ConnmanClient *client, const gchar *network)
 	DBusGProxy *proxy;
 
 	DBG("client %p", client);
+
+	if (network == NULL)
+		return;
 
 	proxy = connman_dbus_get_proxy(priv->store, network);
 	if (proxy == NULL)
