@@ -458,7 +458,7 @@ static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
 	gboolean enabled;
 	GtkTreeIter iter;
 
-	if (hash == NULL)
+	if (error != NULL || hash == NULL)
 		goto done;
 
 	value = g_hash_table_lookup(hash, "Type");
