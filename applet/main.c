@@ -98,11 +98,42 @@ static void settings_callback(GtkWidget *item, gpointer user_data)
 		g_printerr("Couldn't execute command: %s\n", command);
 }
 
+static void show_error_dialog(const gchar *message)
+{
+	GtkWidget *dialog;
+
+	dialog = gtk_message_dialog_new_with_markup(NULL, GTK_DIALOG_MODAL,
+					GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
+								"%s", message);
+
+	gtk_dialog_run(GTK_DIALOG(dialog));
+
+	gtk_widget_destroy(dialog);
+}
+
 static void activate_callback(GtkWidget *item, gpointer user_data)
 {
 	const gchar *path = user_data;
+	guint security;
+	gchar *passphrase;
 
-	connman_client_connect(client, path);
+	security = connman_client_get_security(client, path);
+	if (security == CONNMAN_SECURITY_UNKNOWN)
+		return;
+
+	if (security == CONNMAN_SECURITY_NONE) {
+		connman_client_connect(client, path);
+		return;
+	}
+
+	passphrase = connman_client_get_passphrase(client, path);
+	if (passphrase != NULL) {
+		g_free(passphrase);
+		connman_client_connect(client, path);
+		return;
+	}
+
+	show_error_dialog("Security settings for network are missing");
 }
 
 static GtkWidget *create_popupmenu(void)
