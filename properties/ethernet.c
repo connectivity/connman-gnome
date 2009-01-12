@@ -89,7 +89,24 @@ void update_ethernet_policy(struct config_data *data, guint policy)
 	g_signal_handlers_block_by_func(G_OBJECT(combo),
 					G_CALLBACK(changed_callback), data);
 
-	/* change policy */
+	switch (policy) {
+	case CONNMAN_POLICY_OFF:
+		gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 3);
+		break;
+	case CONNMAN_POLICY_IGNORE:
+		gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 1);
+		info = g_strdup_printf(_("Ignore the interface and don't "
+				"make any attempts for configuration."));
+		break;
+	case CONNMAN_POLICY_AUTO:
+		gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 0);
+		info = g_strdup_printf(_("Detect carrier and then "
+				"automatically configure the interface."));
+		break;
+	default:
+		gtk_combo_box_set_active(GTK_COMBO_BOX(combo), -1);
+		break;
+	}
 
 	g_signal_handlers_unblock_by_func(G_OBJECT(combo),
 					G_CALLBACK(changed_callback), data);

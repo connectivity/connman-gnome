@@ -33,7 +33,7 @@ static ConnmanClient *client;
 static GtkWidget *interface_notebook;
 
 static void update_status(struct config_data *data,
-				guint type, guint state, guint policy,
+				guint type, gboolean inrange, guint policy,
 				const gchar *network, const gchar *address)
 {
 	const char *str;
@@ -41,17 +41,33 @@ static void update_status(struct config_data *data,
 
 	switch (type) {
 	case CONNMAN_TYPE_ETHERNET:
-		str = N_("Cable Unplugged");
-		info = g_strdup_printf(_("The cable for %s is "
+		if (inrange == TRUE) {
+			str = N_("Connected");
+			info = g_strdup_printf(_("%s is currently active "
+						"and has the IP address %s."),
+						N_("Ethernet"), address);
+		} else {
+			str = N_("Cable Unplugged");
+			info = g_strdup_printf(_("The cable for %s is "
 					"not plugged in."), N_("Ethernet"));
+		}
 		break;
 
 	case CONNMAN_TYPE_WIFI:
-		str = N_("Not Connected");
+		if (inrange == TRUE) {
+			str = N_("Connected");
+			info = g_strdup_printf(_("%s is currently active "
+						"and has the IP address %s."),
+						N_("Wireless"), address);
+		} else
+			str = N_("Not Connected");
 		break;
 
 	default:
-		str = N_("Not Connected");
+		if (inrange == TRUE)
+			str = N_("Connected");
+		else
+			str = N_("Not Connected");
 		break;
 	}
 
@@ -107,7 +123,8 @@ static struct config_data *create_config(GtkTreeModel *model,
 	GtkWidget *hbox;
 	GtkWidget *button;
 	struct config_data *data;
-	guint type, state = 0, policy = 0;
+	guint type, policy;
+	gboolean inrange;
 	gchar *markup, *vendor = NULL, *product = NULL;
 	gchar *network = NULL, *address = NULL;
 
@@ -116,7 +133,11 @@ static struct config_data *create_config(GtkTreeModel *model,
 		return NULL;
 
 	gtk_tree_model_get(model, iter,
-				CONNMAN_COLUMN_TYPE, &type, -1);
+				CONNMAN_COLUMN_TYPE, &type,
+				CONNMAN_COLUMN_INRANGE, &inrange,
+				CONNMAN_COLUMN_NETWORK, &network,
+				CONNMAN_COLUMN_ADDRESS, &address,
+				CONNMAN_COLUMN_POLICY, &policy, -1);
 
 	mainbox = gtk_vbox_new(FALSE, 6);
 	data->widget = mainbox;
@@ -170,7 +191,7 @@ static struct config_data *create_config(GtkTreeModel *model,
 	data->window = user_data;
 	create_advanced_dialog(data, type);
 
-	update_status(data, type, state, policy, network, address);
+	update_status(data, type, inrange, policy, network, address);
 
 	g_free(network);
 	g_free(address);
