@@ -102,7 +102,14 @@ static gboolean compare_proxy(GtkTreeStore *store, GtkTreeIter *iter,
 static gboolean get_iter_from_proxy(GtkTreeStore *store,
 					GtkTreeIter *iter, DBusGProxy *proxy)
 {
-	const char *path = dbus_g_proxy_get_path(proxy);
+	const char *path;
+
+	if (proxy == NULL)
+		return FALSE;
+
+	path = dbus_g_proxy_get_path(proxy);
+	if (path == NULL)
+		return FALSE;
 
 	return iter_search(store, iter, NULL, compare_proxy, path);
 }
@@ -110,6 +117,9 @@ static gboolean get_iter_from_proxy(GtkTreeStore *store,
 static gboolean get_iter_from_path(GtkTreeStore *store,
 					GtkTreeIter *iter, const char *path)
 {
+	if (path == NULL)
+		return FALSE;
+
 	return iter_search(store, iter, NULL, compare_proxy, path);
 }
 
@@ -224,9 +234,9 @@ static const gchar *type2icon(guint type)
 		return "network-wireless";
 	case CONNMAN_TYPE_BLUETOOTH:
 		return "bluetooth";
-	default:
-		return NULL;
 	}
+
+	return NULL;
 }
 
 static guint get_security(const GValue *value)
@@ -397,7 +407,7 @@ static void device_properties(DBusGProxy *proxy, GHashTable *hash,
 	value = g_hash_table_lookup(hash, "Powered");
 	powered = value ? g_value_get_boolean(value) : FALSE;
 
-	DBG("name %s type %d", name, type);
+	DBG("name %s type %d icon %s", name, type, icon);
 
 	if (get_iter_from_proxy(store, &iter, proxy) == FALSE) {
 		gtk_tree_store_insert_with_values(store, &iter, NULL, -1,
@@ -456,6 +466,7 @@ static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
 	GValue *value;
 	guint type, strength;
 	gboolean enabled;
+	const char *device;
 	GtkTreeIter iter;
 
 	if (error != NULL || hash == NULL)
@@ -488,6 +499,16 @@ static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
 					CONNMAN_COLUMN_TYPE, type,
 					CONNMAN_COLUMN_ENABLED, enabled,
 					CONNMAN_COLUMN_STRENGTH, strength, -1);
+
+	value = g_hash_table_lookup(hash, "Device");
+	device = value ? g_value_get_boxed(value) : NULL;
+
+	DBG("device %s", device);
+
+	if (get_iter_from_path(store, &iter, device) == TRUE) {
+		gtk_tree_store_set(store, &iter,
+					CONNMAN_COLUMN_INRANGE, TRUE, -1);
+	}
 
 done:
 	g_object_unref(proxy);
@@ -541,14 +562,14 @@ static void manager_properties(DBusGProxy *proxy, GHashTable *hash,
 	if (callback)
 		callback(state, NULL);
 
+	value = g_hash_table_lookup(hash, "Devices");
+	if (value != NULL)
+		property_update(store, value, "Devices", device_properties);
+
 	value = g_hash_table_lookup(hash, "Connections");
 	if (value != NULL)
 		property_update(store, value,
 					"Connections", connection_properties);
-
-	value = g_hash_table_lookup(hash, "Devices");
-	if (value != NULL)
-		property_update(store, value, "Devices", device_properties);
 }
 
 DBusGProxy *connman_dbus_create_manager(DBusGConnection *conn,
