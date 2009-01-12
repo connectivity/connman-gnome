@@ -1,2 +1,9 @@
+ver 0.2:
+	Add error checks for failed property calls.
+	Add support for marking devices as connected.
+	Add support for setting Ethernet device policy.
+	Add support for showing assigned IPv4 address.
+	Add support for checking WiFi security details.
+
 ver 0.1:
 	Initial public release.
