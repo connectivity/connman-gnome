@@ -466,7 +466,7 @@ static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
 	GValue *value;
 	guint type, strength;
 	gboolean enabled;
-	const char *device;
+	const char *device, *address;
 	GtkTreeIter iter;
 
 	if (error != NULL || hash == NULL)
@@ -481,14 +481,18 @@ static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
 	value = g_hash_table_lookup(hash, "Default");
 	enabled = value ? g_value_get_boolean(value) : FALSE;
 
-	DBG("type %d", type);
+	value = g_hash_table_lookup(hash, "IPv4.Address");
+	address = value ? g_value_get_string(value) : NULL;
+
+	DBG("type %d address %s", type, address);
 
 	if (get_iter_from_proxy(store, &iter, proxy) == FALSE) {
 		gtk_tree_store_insert_with_values(store, &iter, NULL, -1,
 					CONNMAN_COLUMN_PROXY, proxy,
 					CONNMAN_COLUMN_TYPE, type,
 					CONNMAN_COLUMN_ENABLED, enabled,
-					CONNMAN_COLUMN_STRENGTH, strength, -1);
+					CONNMAN_COLUMN_STRENGTH, strength,
+					CONNMAN_COLUMN_ADDRESS, address, -1);
 
 		dbus_g_proxy_add_signal(proxy, "PropertyChanged",
 				G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
@@ -507,7 +511,8 @@ static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
 
 	if (get_iter_from_path(store, &iter, device) == TRUE) {
 		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_INRANGE, TRUE, -1);
+					CONNMAN_COLUMN_INRANGE, TRUE,
+					CONNMAN_COLUMN_ADDRESS, address, -1);
 	}
 
 done:

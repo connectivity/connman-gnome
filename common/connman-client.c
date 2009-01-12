@@ -80,7 +80,8 @@ static void connman_client_init(ConnmanClient *client)
 	priv->store = gtk_tree_store_new(_CONNMAN_NUM_COLUMNS, G_TYPE_OBJECT,
 			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT,
 			G_TYPE_BOOLEAN, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN,
-			G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
+			G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING,
+					G_TYPE_STRING, G_TYPE_STRING);
 
 	g_object_set_data(G_OBJECT(priv->store), "State", g_strdup("offline"));
 
