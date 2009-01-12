@@ -234,11 +234,11 @@ static void row_changed(GtkTreeModel *model, GtkTreePath  *path,
 static void state_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
-	gboolean powered;
+	gboolean inrange;
 
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_ENABLED, &powered, -1);
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_INRANGE, &inrange, -1);
 
-	if (powered == TRUE)
+	if (inrange == TRUE)
 		g_object_set(cell, "icon-name", GTK_STOCK_YES, NULL);
 	else
 		g_object_set(cell, "icon-name", NULL, NULL);
