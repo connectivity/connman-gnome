@@ -67,6 +67,9 @@ void connman_client_propose_scan(ConnmanClient *client, const gchar *device);
 void connman_client_connect(ConnmanClient *client, const gchar *network);
 void connman_client_disconnect(ConnmanClient *client, const gchar *network);
 
+guint connman_client_get_security(ConnmanClient *client, const gchar *network);
+gchar *connman_client_get_passphrase(ConnmanClient *client, const gchar *network);
+
 typedef void (* ConnmanClientCallback) (const char *status, void *user_data);
 
 void connman_client_set_callback(ConnmanClient *client,

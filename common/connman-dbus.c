@@ -137,6 +137,12 @@ DBusGProxy *connman_dbus_get_proxy(GtkTreeStore *store, const gchar *path)
 	return proxy;
 }
 
+gboolean connman_dbus_get_iter(GtkTreeStore *store, const gchar *path,
+							GtkTreeIter *iter)
+{
+	return get_iter_from_path(store, iter, path);
+}
+
 static void iterate_list(const GValue *value, gpointer user_data)
 {
 	GSList **list = user_data;

@@ -40,3 +40,5 @@ DBusGProxy *connman_dbus_create_manager(DBusGConnection *connection,
 void connman_dbus_destroy_manager(DBusGProxy *proxy, GtkTreeStore *store);
 
 DBusGProxy *connman_dbus_get_proxy(GtkTreeStore *store, const gchar *path);
+gboolean connman_dbus_get_iter(GtkTreeStore *store, const gchar *path,
+							GtkTreeIter *iter);

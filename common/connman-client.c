@@ -454,6 +454,46 @@ void connman_client_disconnect(ConnmanClient *client, const gchar *network)
 	g_object_unref(proxy);
 }
 
+guint connman_client_get_security(ConnmanClient *client, const gchar *network)
+{
+	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
+	GtkTreeIter iter;
+	guint security;
+
+	DBG("client %p", client);
+
+	if (network == NULL)
+		return CONNMAN_SECURITY_UNKNOWN;
+
+	if (connman_dbus_get_iter(priv->store, network, &iter) == FALSE)
+		return CONNMAN_SECURITY_UNKNOWN;
+
+	gtk_tree_model_get(GTK_TREE_MODEL(priv->store), &iter,
+				CONNMAN_COLUMN_SECURITY, &security, -1);
+
+	return security;
+}
+
+gchar *connman_client_get_passphrase(ConnmanClient *client, const gchar *network)
+{
+	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
+	GtkTreeIter iter;
+	gchar *passphrase;
+
+	DBG("client %p", client);
+
+	if (network == NULL)
+		return NULL;
+
+	if (connman_dbus_get_iter(priv->store, network, &iter) == FALSE)
+		return NULL;
+
+	gtk_tree_model_get(GTK_TREE_MODEL(priv->store), &iter,
+				CONNMAN_COLUMN_PASSPHRASE, &passphrase, -1);
+
+	return passphrase;
+}
+
 void connman_client_set_callback(ConnmanClient *client,
 					ConnmanClientCallback callback)
 {
