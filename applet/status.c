@@ -57,7 +57,7 @@ static IconAnimation *icon_animation_load(GtkIconTheme *icontheme,
 					const gchar *pattern, guint count)
 {
 	IconAnimation *animation;
-	int i;
+	unsigned int i;
 
 	animation = g_new0(IconAnimation, 1);
 
@@ -122,7 +122,7 @@ static void icon_animation_stop(IconAnimation *animation)
 
 static void icon_animation_free(IconAnimation *animation)
 {
-	int i;
+	unsigned int i;
 
 	gtk_status_icon_set_visible(statusicon, FALSE);
 
