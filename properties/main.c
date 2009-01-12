@@ -159,11 +159,13 @@ static struct config_data *create_config(GtkTreeModel *model,
 	gtk_label_set_markup(GTK_LABEL(label), markup);
 	g_free(markup);
 
-	button = gtk_button_new_with_label(_("Advanced..."));
-	gtk_box_pack_start(GTK_BOX(hbox), button, FALSE, FALSE, 0);
-	g_signal_connect(G_OBJECT(button), "clicked",
+	if (0) {
+		button = gtk_button_new_with_label(_("Advanced..."));
+		gtk_box_pack_start(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+		g_signal_connect(G_OBJECT(button), "clicked",
 				G_CALLBACK(advanced_callback), data);
-	data->button = button;
+		data->button = button;
+	}
 
 	data->window = user_data;
 	create_advanced_dialog(data, type);
@@ -221,6 +223,12 @@ static void select_callback(GtkTreeSelection *selection, gpointer user_data)
 static void row_changed(GtkTreeModel *model, GtkTreePath  *path,
 				GtkTreeIter  *iter, gpointer user_data)
 {
+	guint type;
+	gboolean powered, inrange;
+
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_TYPE, &type,
+					CONNMAN_COLUMN_ENABLED, &powered,
+					CONNMAN_COLUMN_INRANGE, &inrange, -1);
 }
 
 static void state_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
@@ -240,12 +248,13 @@ static void type_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
 	guint type;
-	gboolean powered;
+	gboolean powered, inrange;
 	gchar *markup;
 	const char *title, *info;
 
 	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_TYPE, &type,
-					CONNMAN_COLUMN_ENABLED, &powered, -1);
+					CONNMAN_COLUMN_ENABLED, &powered,
+					CONNMAN_COLUMN_INRANGE, &inrange, -1);
 
 	switch (type) {
 	case CONNMAN_TYPE_ETHERNET:
@@ -265,9 +274,12 @@ static void type_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 		break;
 	}
 
-	if (powered == TRUE)
-		info = N_("Not Connected");
-	else
+	if (powered == TRUE) {
+		if (inrange == TRUE)
+			info = N_("Connceted");
+		else
+			info = N_("Not Connected");
+	} else
 		info = N_("Disabled");
 
 	markup = g_strdup_printf("<b>%s</b>\n<small>%s</small>", title, info);
