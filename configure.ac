@@ -8,12 +8,10 @@ AM_MAINTAINER_MODE
 
 AC_PREFIX_DEFAULT(/usr/local)
 
-if (test "${CFLAGS}" = ""); then
-	CFLAGS="-Wall -O2 -D_FORTIFY_SOURCE=2"
-fi
-
 AC_DEFINE_UNQUOTED(LOCALEDIR, "${prefix}/share/locale",
 				[Directory for the localization files])
+
+COMPILER_FLAGS
 
 AC_LANG_C
 
