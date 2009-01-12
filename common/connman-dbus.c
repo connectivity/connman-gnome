@@ -239,6 +239,24 @@ static const gchar *type2icon(guint type)
 	return NULL;
 }
 
+static guint get_policy(const GValue *value)
+{
+	const char *policy = value ? g_value_get_string(value) : NULL;
+
+	if (policy == NULL)
+		return CONNMAN_POLICY_UNKNOWN;
+	else if (g_str_equal(policy, "ignore") == TRUE)
+		return CONNMAN_POLICY_IGNORE;
+	else if (g_str_equal(policy, "off") == TRUE)
+		return CONNMAN_POLICY_OFF;
+	else if (g_str_equal(policy, "auto") == TRUE)
+		return CONNMAN_POLICY_AUTO;
+	else if (g_str_equal(policy, "manual") == TRUE)
+		return CONNMAN_POLICY_MANUAL;
+
+	return CONNMAN_POLICY_UNKNOWN;
+}
+
 static guint get_security(const GValue *value)
 {
 	const char *security = value ? g_value_get_string(value) : NULL;
@@ -374,6 +392,10 @@ static void device_changed(DBusGProxy *proxy, const char *property,
 		return;
 
 	if (g_str_equal(property, "Powered") == TRUE) {
+		guint policy = get_policy(value);
+		gtk_tree_store_set(store, &iter,
+					CONNMAN_COLUMN_POLICY, policy, -1);
+	} else if (g_str_equal(property, "Powered") == TRUE) {
 		gboolean powered = g_value_get_boolean(value);
 		gtk_tree_store_set(store, &iter,
 					CONNMAN_COLUMN_ENABLED, powered, -1);
@@ -388,7 +410,7 @@ static void device_properties(DBusGProxy *proxy, GHashTable *hash,
 	const char *path = dbus_g_proxy_get_path(proxy);
 	GValue *value;
 	const gchar *name, *icon;
-	guint type;
+	guint type, policy;
 	gboolean powered;
 	GtkTreeIter iter;
 
@@ -404,6 +426,9 @@ static void device_properties(DBusGProxy *proxy, GHashTable *hash,
 	type = get_type(value);
 	icon = type2icon(type);
 
+	value = g_hash_table_lookup(hash, "Policy");
+	policy = get_policy(value);
+
 	value = g_hash_table_lookup(hash, "Powered");
 	powered = value ? g_value_get_boolean(value) : FALSE;
 
@@ -415,7 +440,8 @@ static void device_properties(DBusGProxy *proxy, GHashTable *hash,
 					CONNMAN_COLUMN_NAME, name,
 					CONNMAN_COLUMN_ICON, icon,
 					CONNMAN_COLUMN_TYPE, type,
-					CONNMAN_COLUMN_ENABLED, powered, -1);
+					CONNMAN_COLUMN_ENABLED, powered,
+					CONNMAN_COLUMN_POLICY, policy, -1);
 
 		dbus_g_proxy_add_signal(proxy, "PropertyChanged",
 				G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
@@ -426,7 +452,8 @@ static void device_properties(DBusGProxy *proxy, GHashTable *hash,
 					CONNMAN_COLUMN_NAME, name,
 					CONNMAN_COLUMN_ICON, icon,
 					CONNMAN_COLUMN_TYPE, type,
-					CONNMAN_COLUMN_ENABLED, powered, -1);
+					CONNMAN_COLUMN_ENABLED, powered,
+					CONNMAN_COLUMN_POLICY, policy, -1);
 
 	value = g_hash_table_lookup(hash, "Networks");
 	if (value != NULL)
