@@ -28,6 +28,7 @@
 #include "connman-client.h"
 
 #include "marshal.h"
+#include "marshal.c"
 
 #ifdef DEBUG
 #define DBG(fmt, arg...) printf("%s:%s() " fmt "\n", __FILE__, __FUNCTION__ , ## arg)

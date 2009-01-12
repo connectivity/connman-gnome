@@ -16,7 +16,7 @@ BUILT_SOURCES = marshal.h marshal.c \
 			connman-dbus-glue.h \
 				instance-glue.h
 
-nodist_libcommon_a_SOURCES = $(BUILT_SOURCES)
+nodist_libcommon_a_SOURCES = connman-dbus-glue.h instance-glue.h
 
 CLEANFILES = $(BUILT_SOURCES)
 
