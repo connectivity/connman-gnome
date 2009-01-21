@@ -436,6 +436,14 @@ void connman_client_connect(ConnmanClient *client, const gchar *network)
 	g_object_unref(proxy);
 }
 
+static void connman_client_disconnect_all(ConnmanClient *client)
+{
+	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
+
+	gtk_tree_model_foreach(GTK_TREE_MODEL(priv->store),
+						network_disconnect, NULL);
+}
+
 void connman_client_disconnect(ConnmanClient *client, const gchar *network)
 {
 	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
@@ -443,8 +451,10 @@ void connman_client_disconnect(ConnmanClient *client, const gchar *network)
 
 	DBG("client %p", client);
 
-	if (network == NULL)
+	if (network == NULL) {
+		connman_client_disconnect_all(client);
 		return;
+	}
 
 	proxy = connman_dbus_get_proxy(priv->store, network);
 	if (proxy == NULL)
