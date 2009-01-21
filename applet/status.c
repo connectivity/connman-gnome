@@ -98,6 +98,8 @@ static gboolean icon_animation_timeout(gpointer data)
 static void icon_animation_start(IconAnimation *animation,
 						guint start, guint end)
 {
+	gtk_status_icon_set_tooltip(statusicon, NULL);
+
 	animation->start = start;
 	animation->end = (end == 0) ? animation->count - 1 : end;
 
@@ -112,6 +114,8 @@ static void icon_animation_start(IconAnimation *animation,
 
 static void icon_animation_stop(IconAnimation *animation)
 {
+	gtk_status_icon_set_tooltip(statusicon, NULL);
+
 	if (animation->id > 0)
 		g_source_remove(animation->id);
 
@@ -172,6 +176,7 @@ static void popup_callback(GObject *object, guint button,
 
 static GtkIconTheme *icontheme;
 static IconAnimation *animation;
+static GdkPixbuf *pixbuf_notifier;
 static GdkPixbuf *pixbuf_none;
 static GdkPixbuf *pixbuf_wired;
 static GdkPixbuf *pixbuf_signal[5];
@@ -200,6 +205,7 @@ int status_init(StatusCallback activate, GtkWidget *popup)
 
 	pixbuf_none = pixbuf_load(icontheme, "connman-type-none");
 	pixbuf_wired = pixbuf_load(icontheme, "connman-type-wired");
+	pixbuf_notifier = pixbuf_load(icontheme, "connman-notifier-unavailable");
 
 	g_signal_connect(statusicon, "activate",
 				G_CALLBACK(activate_callback), activate);
@@ -221,10 +227,22 @@ void status_cleanup(void)
 
 	g_object_unref(pixbuf_none);
 	g_object_unref(pixbuf_wired);
+	g_object_unref(pixbuf_notifier);
 
 	g_object_unref(icontheme);
 
 	g_object_unref(statusicon);
+}
+
+void status_unavailable(void)
+{
+	icon_animation_stop(animation);
+
+	gtk_status_icon_set_from_pixbuf(statusicon, pixbuf_notifier);
+	gtk_status_icon_set_tooltip(statusicon,
+				"Connection Manager daemon is not running");
+
+	gtk_status_icon_set_visible(statusicon, TRUE);
 }
 
 void status_hide(void)
@@ -265,6 +283,7 @@ static void set_ready(gint signal)
 
 	if (signal < 0) {
 		gtk_status_icon_set_from_pixbuf(statusicon, pixbuf_wired);
+		gtk_status_icon_set_tooltip(statusicon, NULL);
 		return;
 	}
 
@@ -274,6 +293,7 @@ static void set_ready(gint signal)
 		index = 3;
 
 	gtk_status_icon_set_from_pixbuf(statusicon, pixbuf_signal[index]);
+	gtk_status_icon_set_tooltip(statusicon, NULL);
 }
 
 struct timeout_data {

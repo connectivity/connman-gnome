@@ -24,6 +24,7 @@ typedef gboolean (* StatusCallback) (GtkMenu *menu);
 int status_init(StatusCallback activate, GtkWidget *popup);
 void status_cleanup(void);
 
+void status_unavailable(void);
 void status_hide(void);
 void status_offline(void);
 void status_prepare(void);

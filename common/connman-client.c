@@ -57,9 +57,15 @@ static void name_owner_changed(DBusGProxy *dbus, const char *name,
 	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
 	GtkTreeIter iter;
 	gboolean cont;
+	char *state, *oldstate;
 
-	if (g_str_equal(name, CONNMAN_SERVICE) == FALSE || *new != '\0')
+	if (g_str_equal(name, CONNMAN_SERVICE) == FALSE)
 		return;
+
+	if (*new != '\0') {
+		state = "offline";
+		goto done;
+	}
 
 	DBG("client %p name %s", client, name);
 
@@ -68,6 +74,17 @@ static void name_owner_changed(DBusGProxy *dbus, const char *name,
 
 	while (cont == TRUE)
 		cont = gtk_tree_store_remove(priv->store, &iter);
+
+	state = "unavailable";
+
+done:
+	oldstate = g_object_get_data(G_OBJECT(priv->store), "State");
+	g_free(oldstate);
+
+	g_object_set_data(G_OBJECT(priv->store), "State", g_strdup(state));
+
+	if (priv->callback != NULL)
+		priv->callback(state, NULL);
 }
 
 static DBusGConnection *connection = NULL;
@@ -85,7 +102,8 @@ static void connman_client_init(ConnmanClient *client)
 					G_TYPE_STRING, G_TYPE_STRING,
 								G_TYPE_UINT);
 
-	g_object_set_data(G_OBJECT(priv->store), "State", g_strdup("offline"));
+	g_object_set_data(G_OBJECT(priv->store),
+					"State", g_strdup("unavailable"));
 
 	priv->dbus = dbus_g_proxy_new_for_name(connection, DBUS_SERVICE_DBUS,
 				DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);

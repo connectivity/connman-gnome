@@ -422,7 +422,9 @@ static void connection_removed(GtkTreeModel *model, GtkTreePath *path,
 
 static void status_callback(const char *status, void *user_data)
 {
-	if (g_str_equal(status, "offline") == TRUE)
+	if (g_str_equal(status, "unavailable") == TRUE)
+		status_unavailable();
+	else if (g_str_equal(status, "offline") == TRUE)
 		status_offline();
 	else if (g_str_equal(status, "connecting") == TRUE)
 		status_config();
@@ -453,9 +455,9 @@ int main(int argc, char *argv[])
 	g_signal_connect(G_OBJECT(model), "row-deleted",
 					G_CALLBACK(connection_removed), NULL);
 
-	connman_client_set_callback(client, status_callback);
-
 	update_status(model);
+
+	connman_client_set_callback(client, status_callback);
 
 	gtk_main();
 
