@@ -297,7 +297,7 @@ static void type_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 
 	if (powered == TRUE) {
 		if (inrange == TRUE)
-			info = N_("Connceted");
+			info = N_("Connected");
 		else
 			info = N_("Not Connected");
 	} else
