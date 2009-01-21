@@ -288,22 +288,25 @@ static void enumerate_networks(GtkMenu *menu,
 		DBusGProxy *proxy;
 		guint strength, security;
 		gchar *name, *path;
-		gboolean connected;
+		gboolean inrange, connected;
 
 		gtk_tree_model_get(model, &iter,
 				CONNMAN_COLUMN_PROXY, &proxy,
 				CONNMAN_COLUMN_NAME, &name,
+				CONNMAN_COLUMN_INRANGE, &inrange,
 				CONNMAN_COLUMN_ENABLED, &connected,
 				CONNMAN_COLUMN_STRENGTH, &strength,
 				CONNMAN_COLUMN_SECURITY, &security, -1);
 
-		item = append_menuitem(menu, name, security, strength);
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item),
+		if (connected == TRUE || inrange == TRUE) {
+			item = append_menuitem(menu, name, security, strength);
+			gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item),
 								connected);
 
-		path = g_strdup(dbus_g_proxy_get_path(proxy));
-		g_signal_connect(item, "activate",
+			path = g_strdup(dbus_g_proxy_get_path(proxy));
+			g_signal_connect(item, "activate",
 					G_CALLBACK(activate_callback), path);
+		}
 
 		g_free(name);
 
