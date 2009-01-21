@@ -202,6 +202,11 @@ static void activate_callback(GtkWidget *item, gpointer user_data)
 	passphrase_dialog(path, NULL);
 }
 
+static void disconnect_callback(GtkWidget *item, gpointer user_data)
+{
+	connman_client_disconnect(client, NULL);
+}
+
 static GtkWidget *create_popupmenu(void)
 {
 	GtkWidget *menu;
@@ -338,6 +343,12 @@ static gboolean menu_callback(GtkMenu *menu)
 	g_object_unref(model);
 
 	item = gtk_separator_menu_item_new();
+	gtk_widget_show(item);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+
+	item = gtk_menu_item_new_with_label(_("Disconnect Network..."));
+	g_signal_connect(item, "activate",
+				G_CALLBACK(disconnect_callback), NULL);
 	gtk_widget_show(item);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
 
