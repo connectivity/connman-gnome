@@ -403,7 +403,7 @@ static void device_changed(DBusGProxy *proxy, const char *property,
 	if (get_iter_from_path(store, &iter, path) == FALSE)
 		return;
 
-	if (g_str_equal(property, "Powered") == TRUE) {
+	if (g_str_equal(property, "Policy") == TRUE) {
 		guint policy = get_policy(value);
 		gtk_tree_store_set(store, &iter,
 					CONNMAN_COLUMN_POLICY, policy, -1);
