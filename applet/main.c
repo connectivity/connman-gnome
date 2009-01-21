@@ -98,15 +98,81 @@ static void settings_callback(GtkWidget *item, gpointer user_data)
 		g_printerr("Couldn't execute command: %s\n", command);
 }
 
-static void show_error_dialog(const gchar *message)
+static void toggled_callback(GtkWidget *button, gpointer user_data)
+{
+	GtkWidget *entry = user_data;
+	gboolean mode;
+
+	mode = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button));
+
+	gtk_entry_set_visibility(GTK_ENTRY(entry), mode);
+}
+
+static void passphrase_dialog(const char *path, const char *name)
 {
 	GtkWidget *dialog;
+	GtkWidget *button;
+	GtkWidget *image;
+	GtkWidget *label;
+	GtkWidget *entry;
+	GtkWidget *table;
+	GtkWidget *vbox;
 
-	dialog = gtk_message_dialog_new_with_markup(NULL, GTK_DIALOG_MODAL,
-					GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
-								"%s", message);
+	dialog = gtk_dialog_new();
+	gtk_window_set_title(GTK_WINDOW(dialog), _("Enter passphrase"));
+	gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
+	gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER);
+	gtk_window_set_keep_above(GTK_WINDOW(dialog), TRUE);
+	gtk_window_set_urgency_hint(GTK_WINDOW(dialog), TRUE);
+	gtk_dialog_set_has_separator(GTK_DIALOG(dialog), FALSE);
 
-	gtk_dialog_run(GTK_DIALOG(dialog));
+	button = gtk_dialog_add_button(GTK_DIALOG(dialog),
+				GTK_STOCK_CANCEL, GTK_RESPONSE_REJECT);
+	button = gtk_dialog_add_button(GTK_DIALOG(dialog),
+					GTK_STOCK_OK, GTK_RESPONSE_ACCEPT);
+	gtk_widget_grab_default(button);
+
+	table = gtk_table_new(5, 2, FALSE);
+	gtk_table_set_row_spacings(GTK_TABLE(table), 4);
+	gtk_table_set_col_spacings(GTK_TABLE(table), 20);
+	gtk_container_set_border_width(GTK_CONTAINER(table), 12);
+	gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), table);
+	image = gtk_image_new_from_icon_name(GTK_STOCK_DIALOG_AUTHENTICATION,
+							GTK_ICON_SIZE_DIALOG);
+	gtk_misc_set_alignment(GTK_MISC(image), 0.0, 0.0);
+	gtk_table_attach(GTK_TABLE(table), image, 0, 1, 0, 5,
+						GTK_SHRINK, GTK_FILL, 0, 0);
+	vbox = gtk_vbox_new(FALSE, 6);
+
+	label = gtk_label_new(_("Network requires input of a passphrase:"));
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.0);
+	gtk_container_add(GTK_CONTAINER(vbox), label);
+	gtk_table_attach(GTK_TABLE(table), vbox, 1, 2, 0, 1,
+				GTK_EXPAND | GTK_FILL, GTK_SHRINK, 0, 0);
+
+	entry = gtk_entry_new();
+	gtk_entry_set_max_length(GTK_ENTRY(entry), 16);
+	gtk_entry_set_width_chars(GTK_ENTRY(entry), 16);
+	gtk_entry_set_visibility(GTK_ENTRY(entry), FALSE);
+	gtk_entry_set_activates_default(GTK_ENTRY(entry), TRUE);
+	gtk_container_add(GTK_CONTAINER(vbox), entry);
+
+	button = gtk_check_button_new_with_label(_("Show input"));
+	gtk_container_add(GTK_CONTAINER(vbox), button);
+
+	g_signal_connect(G_OBJECT(button), "toggled",
+				G_CALLBACK(toggled_callback), entry);
+
+	gtk_widget_show_all(dialog);
+
+	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+		const gchar *passphrase;
+
+		passphrase = gtk_entry_get_text(GTK_ENTRY(entry));
+
+		connman_client_set_passphrase(client, path, passphrase);
+		connman_client_connect(client, path);
+	}
 
 	gtk_widget_destroy(dialog);
 }
@@ -133,7 +199,7 @@ static void activate_callback(GtkWidget *item, gpointer user_data)
 		return;
 	}
 
-	show_error_dialog("Security settings for network are missing");
+	passphrase_dialog(path, NULL);
 }
 
 static GtkWidget *create_popupmenu(void)
