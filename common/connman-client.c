@@ -99,8 +99,8 @@ static void connman_client_init(ConnmanClient *client)
 			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT,
 			G_TYPE_BOOLEAN, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN,
 			G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING,
-					G_TYPE_STRING, G_TYPE_STRING,
-								G_TYPE_UINT);
+			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT,
+							G_TYPE_STRING);
 
 	g_object_set_data(G_OBJECT(priv->store),
 					"State", g_strdup("unavailable"));

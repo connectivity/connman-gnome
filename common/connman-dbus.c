@@ -202,10 +202,23 @@ static void property_update(GtkTreeStore *store, const GValue *value,
 	for (list = old_list; list; list = list->next) {
 		gchar *path = list->data;
 		GtkTreeIter iter;
+		gchar *device = NULL;
 
-		if (get_iter_from_path(store, &iter, path) == TRUE)
+		if (get_iter_from_path(store, &iter, path) == TRUE) {
+			if (g_str_equal(key, "Connections") == TRUE)
+				gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
+					CONNMAN_COLUMN_DEVICE, &device, -1);
+
 			gtk_tree_store_remove(store, &iter);
+		}
 
+		if (get_iter_from_path(store, &iter, device) == TRUE) {
+			gtk_tree_store_set(store, &iter,
+					CONNMAN_COLUMN_INRANGE, FALSE,
+					CONNMAN_COLUMN_ADDRESS, NULL, -1);
+		}
+
+		g_free(device);
 		g_free(path);
 	}
 
@@ -551,8 +564,11 @@ static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
 
 	DBG("device %s", device);
 
+	gtk_tree_store_set(store, &iter, CONNMAN_COLUMN_DEVICE, device, -1);
+
 	if (get_iter_from_path(store, &iter, device) == TRUE) {
 		gtk_tree_store_set(store, &iter,
+					CONNMAN_COLUMN_DEVICE, device,
 					CONNMAN_COLUMN_INRANGE, TRUE,
 					CONNMAN_COLUMN_ADDRESS, address, -1);
 	}
