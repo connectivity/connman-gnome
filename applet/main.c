@@ -346,7 +346,7 @@ static gboolean menu_callback(GtkMenu *menu)
 	gtk_widget_show(item);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
 
-	item = gtk_menu_item_new_with_label(_("Disconnect Network..."));
+	item = gtk_menu_item_new_with_label(_("Disconnect Network"));
 	g_signal_connect(item, "activate",
 				G_CALLBACK(disconnect_callback), NULL);
 	gtk_widget_show(item);
