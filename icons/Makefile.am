@@ -58,7 +58,8 @@ icon_DATA = \
 	connman-connecting-30.png \
 	connman-connecting-31.png \
 	connman-connecting-32.png \
-	connman-connecting-33.png
+	connman-connecting-33.png \
+	connman-notifier-unavailable.png
 
 EXTRA_DIST = $(icon_DATA)
 
