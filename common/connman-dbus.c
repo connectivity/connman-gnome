@@ -290,6 +290,9 @@ static void network_changed(DBusGProxy *proxy, const char *property,
 
 	DBG("store %p proxy %p property %s", store, proxy, property);
 
+	if (property == NULL || value == NULL)
+		return;
+
 	if (get_iter_from_path(store, &iter, path) == FALSE)
 		return;
 
@@ -394,6 +397,9 @@ static void device_changed(DBusGProxy *proxy, const char *property,
 
 	DBG("store %p proxy %p property %s", store, proxy, property);
 
+	if (property == NULL || value == NULL)
+		return;
+
 	if (get_iter_from_path(store, &iter, path) == FALSE)
 		return;
 
@@ -478,6 +484,9 @@ static void connection_changed(DBusGProxy *proxy, const char *property,
 
 	DBG("store %p proxy %p property %s", store, proxy, property);
 
+	if (property == NULL || value == NULL)
+		return;
+
 	if (get_iter_from_path(store, &iter, path) == FALSE)
 		return;
 
@@ -558,6 +567,9 @@ static void manager_changed(DBusGProxy *proxy, const char *property,
 	GtkTreeStore *store = user_data;
 
 	DBG("store %p proxy %p property %s", store, proxy, property);
+
+	if (property == NULL || value == NULL)
+		return;
 
 	if (g_str_equal(property, "State") == TRUE) {
 		ConnmanClientCallback callback;
