@@ -171,6 +171,8 @@ static void passphrase_dialog(const char *path, const char *name)
 		passphrase = gtk_entry_get_text(GTK_ENTRY(entry));
 
 		connman_client_set_passphrase(client, path, passphrase);
+
+		status_prepare();
 		connman_client_connect(client, path);
 	}
 
@@ -188,6 +190,7 @@ static void activate_callback(GtkWidget *item, gpointer user_data)
 		return;
 
 	if (security == CONNMAN_SECURITY_NONE) {
+		status_prepare();
 		connman_client_connect(client, path);
 		return;
 	}
@@ -195,6 +198,8 @@ static void activate_callback(GtkWidget *item, gpointer user_data)
 	passphrase = connman_client_get_passphrase(client, path);
 	if (passphrase != NULL) {
 		g_free(passphrase);
+
+		status_prepare();
 		connman_client_connect(client, path);
 		return;
 	}
@@ -417,7 +422,9 @@ static void connection_removed(GtkTreeModel *model, GtkTreePath *path,
 
 static void status_callback(const char *status, void *user_data)
 {
-	if (g_str_equal(status, "connecting") == TRUE)
+	if (g_str_equal(status, "offline") == TRUE)
+		status_offline();
+	else if (g_str_equal(status, "connecting") == TRUE)
 		status_config();
 }
 
