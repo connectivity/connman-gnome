@@ -27,6 +27,8 @@
 
 #include "status.h"
 
+static gboolean available = FALSE;
+
 static GtkStatusIcon *statusicon = NULL;
 
 static GdkPixbuf *pixbuf_load(GtkIconTheme *icontheme, const gchar *name)
@@ -98,6 +100,8 @@ static gboolean icon_animation_timeout(gpointer data)
 static void icon_animation_start(IconAnimation *animation,
 						guint start, guint end)
 {
+	available = TRUE;
+
 	gtk_status_icon_set_tooltip(statusicon, NULL);
 
 	animation->start = start;
@@ -114,6 +118,8 @@ static void icon_animation_start(IconAnimation *animation,
 
 static void icon_animation_stop(IconAnimation *animation)
 {
+	available = TRUE;
+
 	gtk_status_icon_set_tooltip(statusicon, NULL);
 
 	if (animation->id > 0)
@@ -148,6 +154,9 @@ static void activate_callback(GObject *object, gpointer user_data)
 	StatusCallback callback = user_data;
 	guint32 activate_time = gtk_get_current_event_time();
 	GtkWidget *menu;
+
+	if (available == FALSE)
+		return;
 
 	menu = gtk_menu_new();
 
@@ -238,6 +247,8 @@ void status_unavailable(void)
 {
 	icon_animation_stop(animation);
 
+	available = FALSE;
+
 	gtk_status_icon_set_from_pixbuf(statusicon, pixbuf_notifier);
 	gtk_status_icon_set_tooltip(statusicon,
 				"Connection Manager daemon is not running");
@@ -250,6 +261,8 @@ void status_hide(void)
 	gtk_status_icon_set_visible(statusicon, FALSE);
 
 	icon_animation_stop(animation);
+
+	available = FALSE;
 
 	gtk_status_icon_set_from_pixbuf(statusicon, NULL);
 }
@@ -280,6 +293,8 @@ void status_config(void)
 static void set_ready(gint signal)
 {
 	int index;
+
+	available = TRUE;
 
 	if (signal < 0) {
 		gtk_status_icon_set_from_pixbuf(statusicon, pixbuf_wired);
