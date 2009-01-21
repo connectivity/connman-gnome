@@ -495,6 +495,32 @@ gchar *connman_client_get_passphrase(ConnmanClient *client, const gchar *network
 	return passphrase;
 }
 
+void connman_client_set_passphrase(ConnmanClient *client, const gchar *network,
+						const gchar *passphrase)
+{
+	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
+	DBusGProxy *proxy;
+	GValue value = { 0 };
+
+	DBG("client %p", client);
+
+	if (network == NULL)
+		return;
+
+	proxy = connman_dbus_get_proxy(priv->store, network);
+	if (proxy == NULL)
+		return;
+
+	g_value_init(&value, G_TYPE_STRING);
+	g_value_set_string(&value, passphrase);
+
+	connman_set_property(proxy, "WiFi.Passphrase", &value, NULL);
+
+	g_value_unset(&value);
+
+	g_object_unref(proxy);
+}
+
 void connman_client_set_callback(ConnmanClient *client,
 					ConnmanClientCallback callback)
 {
