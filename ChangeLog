@@ -1,3 +1,14 @@
+ver 0.3:
+	Add dialog for setting passphrase of networks.
+	Add menu option to disconnect from a network.
+	Add status indication for preparation state.
+	Add status indication for connecting state.
+	Add extra checks for signal property handling.
+	Add special icon when daemon is not running.
+	Fix menu item entries when system is unavailable.
+	Fix status information update on disconnect.
+	Fix display of networks that are not in range.
+
 ver 0.2:
 	Add error checks for failed property calls.
 	Add support for marking devices as connected.
