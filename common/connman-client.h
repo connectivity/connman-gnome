@@ -71,11 +71,13 @@ guint connman_client_get_security(ConnmanClient *client, const gchar *network);
 gchar *connman_client_get_passphrase(ConnmanClient *client, const gchar *network);
 void connman_client_set_passphrase(ConnmanClient *client, const gchar *network,
 						const gchar *passphrase);
+void connman_client_set_remember(ConnmanClient *client, const gchar *network,
+							gboolean remember);
 
 typedef void (* ConnmanClientCallback) (const char *status, void *user_data);
 
 void connman_client_set_callback(ConnmanClient *client,
-					ConnmanClientCallback callback);
+			ConnmanClientCallback callback, gpointer user_data);
 
 enum {
 	CONNMAN_COLUMN_PROXY,		/* G_TYPE_OBJECT  */

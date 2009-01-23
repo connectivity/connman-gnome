@@ -460,7 +460,7 @@ int main(int argc, char *argv[])
 
 	update_status(model);
 
-	connman_client_set_callback(client, status_callback);
+	connman_client_set_callback(client, status_callback, NULL);
 
 	gtk_main();
 

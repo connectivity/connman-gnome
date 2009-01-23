@@ -46,6 +46,7 @@ struct _ConnmanClientPrivate {
 	DBusGProxy *dbus;
 	DBusGProxy *manager;
 	ConnmanClientCallback callback;
+	gpointer userdata;
 };
 
 G_DEFINE_TYPE(ConnmanClient, connman_client, G_TYPE_OBJECT)
@@ -84,7 +85,7 @@ done:
 	g_object_set_data(G_OBJECT(priv->store), "State", g_strdup(state));
 
 	if (priv->callback != NULL)
-		priv->callback(state, NULL);
+		priv->callback(state, priv->userdata);
 }
 
 static DBusGConnection *connection = NULL;
@@ -549,8 +550,34 @@ void connman_client_set_passphrase(ConnmanClient *client, const gchar *network,
 	g_object_unref(proxy);
 }
 
+void connman_client_set_remember(ConnmanClient *client, const gchar *network,
+							gboolean remember)
+{
+	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
+	DBusGProxy *proxy;
+	GValue value = { 0 };
+
+	DBG("client %p", client);
+
+	if (network == NULL)
+		return;
+
+	proxy = connman_dbus_get_proxy(priv->store, network);
+	if (proxy == NULL)
+		return;
+
+	g_value_init(&value, G_TYPE_BOOLEAN);
+	g_value_set_boolean(&value, remember);
+
+	connman_set_property(proxy, "Remember", &value, NULL);
+
+	g_value_unset(&value);
+
+	g_object_unref(proxy);
+}
+
 void connman_client_set_callback(ConnmanClient *client,
-					ConnmanClientCallback callback)
+			ConnmanClientCallback callback, gpointer user_data)
 {
 	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
 	gchar *state;
@@ -558,10 +585,12 @@ void connman_client_set_callback(ConnmanClient *client,
 	DBG("client %p", client);
 
 	priv->callback = callback;
+	priv->userdata = user_data;
 
 	g_object_set_data(G_OBJECT(priv->store), "callback", callback);
+	g_object_set_data(G_OBJECT(priv->store), "userdata", user_data);
 
 	state = g_object_get_data(G_OBJECT(priv->store), "State");
 	if (state != NULL && priv->callback != NULL)
-		priv->callback(state, NULL);
+		priv->callback(state, priv->userdata);
 }

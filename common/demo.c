@@ -450,7 +450,7 @@ int main(int argc, char *argv[])
 
 	window = create_window();
 
-	connman_client_set_callback(client, status_callback);
+	connman_client_set_callback(client, status_callback, NULL);
 
 	if (option_fullscreen == TRUE)
 		gtk_window_fullscreen(GTK_WINDOW(window));
