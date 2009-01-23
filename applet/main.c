@@ -163,14 +163,20 @@ static void passphrase_dialog(const char *path, const char *name)
 	g_signal_connect(G_OBJECT(button), "toggled",
 				G_CALLBACK(toggled_callback), entry);
 
+	button = gtk_check_button_new_with_label(_("Remember network"));
+	gtk_container_add(GTK_CONTAINER(vbox), button);
+
 	gtk_widget_show_all(dialog);
 
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
 		const gchar *passphrase;
+		gboolean remember;
 
 		passphrase = gtk_entry_get_text(GTK_ENTRY(entry));
+		remember = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button));
 
 		connman_client_set_passphrase(client, path, passphrase);
+		connman_client_set_remember(client, path, remember);
 
 		status_prepare();
 		connman_client_connect(client, path);
