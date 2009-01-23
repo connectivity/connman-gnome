@@ -20,6 +20,8 @@
  */
 
 struct config_data {
+	ConnmanClient *client;
+
 	GtkWidget *widget;
 	GtkWidget *title;
 	GtkWidget *label;
@@ -28,6 +30,7 @@ struct config_data {
 	GtkWidget *window;
 	GtkTreeModel *model;
 	gchar *index;
+	gchar *device;
 
 	GtkWidget *dialog;
 

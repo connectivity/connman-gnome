@@ -24,6 +24,7 @@
 #endif
 
 #include <glib/gi18n.h>
+#include <dbus/dbus-glib.h>
 
 #include "connman-client.h"
 
@@ -123,6 +124,7 @@ static struct config_data *create_config(GtkTreeModel *model,
 	GtkWidget *hbox;
 	GtkWidget *button;
 	struct config_data *data;
+	DBusGProxy *proxy;
 	guint type, policy;
 	gboolean inrange;
 	gchar *markup, *vendor = NULL, *product = NULL;
@@ -132,12 +134,18 @@ static struct config_data *create_config(GtkTreeModel *model,
 	if (data == NULL)
 		return NULL;
 
+	data->client = client;
+
 	gtk_tree_model_get(model, iter,
+				CONNMAN_COLUMN_PROXY, &proxy,
 				CONNMAN_COLUMN_TYPE, &type,
 				CONNMAN_COLUMN_INRANGE, &inrange,
 				CONNMAN_COLUMN_NETWORK, &network,
 				CONNMAN_COLUMN_ADDRESS, &address,
 				CONNMAN_COLUMN_POLICY, &policy, -1);
+
+	data->device = g_strdup(dbus_g_proxy_get_path(proxy));
+	g_object_unref(proxy);
 
 	mainbox = gtk_vbox_new(FALSE, 6);
 	data->widget = mainbox;

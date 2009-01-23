@@ -36,6 +36,21 @@ static void changed_callback(GtkWidget *editable, gpointer user_data)
 	gint active;
 
 	active = gtk_combo_box_get_active(GTK_COMBO_BOX(data->policy.config));
+
+	switch (active) {
+	case 0:
+		connman_client_set_policy(data->client, data->device, "auto");
+		update_ethernet_policy(data, CONNMAN_POLICY_AUTO);
+		break;
+	case 1:
+		connman_client_set_policy(data->client, data->device, "ignore");
+		update_ethernet_policy(data, CONNMAN_POLICY_IGNORE);
+		break;
+	case 3:
+		connman_client_set_policy(data->client, data->device, "off");
+		update_ethernet_policy(data, CONNMAN_POLICY_OFF);
+		break;
+	}
 }
 
 void add_ethernet_policy(GtkWidget *mainbox, struct config_data *data)
