@@ -36,6 +36,21 @@ static void changed_callback(GtkWidget *editable, gpointer user_data)
 	gint active;
 
 	active = gtk_combo_box_get_active(GTK_COMBO_BOX(data->policy.config));
+
+	switch (active) {
+	case 0:
+		connman_client_set_policy(data->client, data->device, "auto");
+		update_wifi_policy(data, CONNMAN_POLICY_AUTO);
+		break;
+	case 1:
+		connman_client_set_policy(data->client, data->device, "manual");
+		update_wifi_policy(data, CONNMAN_POLICY_MANUAL);
+		break;
+	case 3:
+		connman_client_set_policy(data->client, data->device, "off");
+		update_wifi_policy(data, CONNMAN_POLICY_OFF);
+		break;
+	}
 }
 
 void add_wifi_policy(GtkWidget *mainbox, struct config_data *data)
@@ -54,6 +69,7 @@ void add_wifi_policy(GtkWidget *mainbox, struct config_data *data)
 	gtk_table_set_col_spacings(GTK_TABLE(table), 8);
 	gtk_box_pack_start(GTK_BOX(vbox), table, FALSE, FALSE, 0);
 
+#if 0
 	label = gtk_label_new(_("Network Name:"));
 	gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_RIGHT);
 	gtk_misc_set_alignment(GTK_MISC(label), 1.0, 0.5);
@@ -61,6 +77,22 @@ void add_wifi_policy(GtkWidget *mainbox, struct config_data *data)
 
 	combo = gtk_combo_box_new_text();
 	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Guest");
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "");
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Off");
+	gtk_combo_box_set_row_separator_func(GTK_COMBO_BOX(combo),
+					separator_function, NULL, NULL);
+	gtk_table_attach_defaults(GTK_TABLE(table), combo, 1, 4, 0, 1);
+	data->policy.config = combo;
+#endif
+
+	label = gtk_label_new(_("Configuration:"));
+	gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_RIGHT);
+	gtk_misc_set_alignment(GTK_MISC(label), 1.0, 0.5);
+	gtk_table_attach_defaults(GTK_TABLE(table), label, 0, 1, 0, 1);
+
+	combo = gtk_combo_box_new_text();
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Automatically");
+	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Manually");
 	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "");
 	gtk_combo_box_append_text(GTK_COMBO_BOX(combo), "Off");
 	gtk_combo_box_set_row_separator_func(GTK_COMBO_BOX(combo),
@@ -88,7 +120,20 @@ void update_wifi_policy(struct config_data *data, guint policy)
 	g_signal_handlers_block_by_func(G_OBJECT(combo),
 					G_CALLBACK(changed_callback), data);
 
-	/* change policy */
+	switch (policy) {
+	case CONNMAN_POLICY_OFF:
+		gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 3);
+		break;
+	case CONNMAN_POLICY_MANUAL:
+		gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 1);
+		break;
+	case CONNMAN_POLICY_AUTO:
+		gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 0);
+		break;
+	default:
+		gtk_combo_box_set_active(GTK_COMBO_BOX(combo), -1);
+		break;
+	}
 
 	g_signal_handlers_unblock_by_func(G_OBJECT(combo),
 					G_CALLBACK(changed_callback), data);
