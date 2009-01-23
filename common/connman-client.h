@@ -60,6 +60,8 @@ GtkTreeModel *connman_client_get_network_model(ConnmanClient *client,
 							const gchar *device);
 GtkTreeModel *connman_client_get_connection_model(ConnmanClient *client);
 
+void connman_client_set_policy(ConnmanClient *client, const gchar *device,
+							const gchar *policy);
 void connman_client_set_powered(ConnmanClient *client, const gchar *device,
 							gboolean powered);
 void connman_client_propose_scan(ConnmanClient *client, const gchar *device);

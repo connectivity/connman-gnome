@@ -337,6 +337,30 @@ GtkTreeModel *connman_client_get_connection_model(ConnmanClient *client)
 	return model;
 }
 
+void connman_client_set_policy(ConnmanClient *client, const gchar *device,
+							const gchar *policy)
+{
+	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
+	DBusGProxy *proxy;
+	GValue value = { 0 };
+
+	DBG("client %p", client);
+
+	if (device == NULL)
+		return;
+
+	proxy = connman_dbus_get_proxy(priv->store, device);
+	if (proxy == NULL)
+		return;
+
+	g_value_init(&value, G_TYPE_STRING);
+	g_value_set_string(&value, policy);
+
+	connman_set_property(proxy, "Policy", &value, NULL);
+
+	g_object_unref(proxy);
+}
+
 void connman_client_set_powered(ConnmanClient *client, const gchar *device,
 							gboolean powered)
 {
