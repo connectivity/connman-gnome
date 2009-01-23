@@ -165,7 +165,7 @@ static void property_update(GtkTreeStore *store, const GValue *value,
 	GSList *list, *link, *old_list, *new_list = NULL;
 	const char *iface;
 
-	DBG("store %p", store);
+	DBG("store %p key %s", store, key);
 
 	if (g_str_equal(key, "Connections") == TRUE)
 		iface = CONNMAN_CONNECTION_INTERFACE;
@@ -184,17 +184,20 @@ static void property_update(GtkTreeStore *store, const GValue *value,
 		gchar *path = list->data;
 		DBusGProxy *proxy;
 
+		DBG("new path %s", path);
+
 		link = g_slist_find_custom(old_list, path, compare_path);
 		if (link != NULL) {
 			g_free(link->data);
 			old_list = g_slist_delete_link(old_list, link);
-			continue;
 		}
 
 		proxy = dbus_g_proxy_new_for_name(connection,
 						CONNMAN_SERVICE, path, iface);
 		if (proxy == NULL)
 			continue;
+
+		DBG("getting %s properties", key);
 
 		connman_get_properties_async(proxy, callback, store);
 	}
@@ -203,6 +206,8 @@ static void property_update(GtkTreeStore *store, const GValue *value,
 		gchar *path = list->data;
 		GtkTreeIter iter;
 		gchar *device = NULL;
+
+		DBG("old path %s", path);
 
 		if (get_iter_from_path(store, &iter, path) == TRUE) {
 			if (g_str_equal(key, "Connections") == TRUE)
@@ -524,6 +529,8 @@ static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
 	const char *device, *address;
 	GtkTreeIter iter;
 
+	DBG("store %p proxy %p hash %p", store, proxy, hash);
+
 	if (error != NULL || hash == NULL)
 		goto done;
 
@@ -589,6 +596,7 @@ static void manager_changed(DBusGProxy *proxy, const char *property,
 
 	if (g_str_equal(property, "State") == TRUE) {
 		ConnmanClientCallback callback;
+		gpointer userdata;
 		gchar *state;
 
 		state = g_object_get_data(G_OBJECT(store), "State");
@@ -598,8 +606,9 @@ static void manager_changed(DBusGProxy *proxy, const char *property,
 		g_object_set_data(G_OBJECT(store), "State", state);
 
 		callback = g_object_get_data(G_OBJECT(store), "callback");
+		userdata = g_object_get_data(G_OBJECT(store), "userdata");
 		if (callback)
-			callback(state, NULL);
+			callback(state, userdata);
 	} else if (g_str_equal(property, "Connections") == TRUE) {
 		property_update(store, value, property, connection_properties);
 	} else if (g_str_equal(property, "Devices") == TRUE) {
@@ -654,6 +663,8 @@ DBusGProxy *connman_dbus_create_manager(DBusGConnection *conn,
 				G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
 	dbus_g_proxy_connect_signal(proxy, "PropertyChanged",
 				G_CALLBACK(manager_changed), store, NULL);
+
+	DBG("getting manager properties");
 
 	connman_get_properties_async(proxy, manager_properties, store);
 
