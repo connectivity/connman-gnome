@@ -151,8 +151,8 @@ static void passphrase_dialog(const char *path, const char *name)
 				GTK_EXPAND | GTK_FILL, GTK_SHRINK, 0, 0);
 
 	entry = gtk_entry_new();
-	gtk_entry_set_max_length(GTK_ENTRY(entry), 16);
-	gtk_entry_set_width_chars(GTK_ENTRY(entry), 16);
+	gtk_entry_set_max_length(GTK_ENTRY(entry), 120);
+	gtk_entry_set_width_chars(GTK_ENTRY(entry), 20);
 	gtk_entry_set_visibility(GTK_ENTRY(entry), FALSE);
 	gtk_entry_set_activates_default(GTK_ENTRY(entry), TRUE);
 	gtk_container_add(GTK_CONTAINER(vbox), entry);
