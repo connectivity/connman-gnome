@@ -343,6 +343,7 @@ static gboolean menu_callback(GtkMenu *menu)
 
 		switch (type) {
 		case CONNMAN_TYPE_WIFI:
+		case CONNMAN_TYPE_WIMAX:
 			enumerate_networks(menu, model, &parent);
 			break;
 		default:
