@@ -56,11 +56,11 @@ static const gchar *state2str(guint state)
 	case CONNMAN_STATE_IDLE:
 		return "Not connected";
 	case CONNMAN_STATE_CARRIER:
-		return "Carrier detected";
+		return "Carrier";
 	case CONNMAN_STATE_ASSOCIATION:
-		return "Trying to connect";
+		return "Connecting";
 	case CONNMAN_STATE_CONFIGURATION:
-		return "Running configuration";
+		return "Configuration";
 	case CONNMAN_STATE_READY:
 		return "Connected";
 	}
