@@ -30,6 +30,7 @@
 
 #include "status.h"
 
+#if 0
 static ConnmanClient *client;
 
 static void open_uri(GtkWindow *parent, const char *uri)
@@ -439,9 +440,11 @@ static void status_callback(const char *status, void *user_data)
 	else if (g_str_equal(status, "connecting") == TRUE)
 		status_config();
 }
+#endif
 
 int main(int argc, char *argv[])
 {
+#if 0
 	GtkTreeModel *model;
 
 	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
@@ -475,6 +478,7 @@ int main(int argc, char *argv[])
 	g_object_unref(client);
 
 	status_cleanup();
+#endif
 
 	return 0;
 }
