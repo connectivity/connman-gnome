@@ -30,6 +30,7 @@
 
 #include "advanced.h"
 
+#if 0
 static ConnmanClient *client;
 static GtkWidget *interface_notebook;
 
@@ -478,9 +479,11 @@ static GtkWidget *create_window(void)
 
 	return window;
 }
+#endif
 
 int main(int argc, char *argv[])
 {
+#if 0
 	GtkWidget *window;
 
 	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
@@ -498,6 +501,7 @@ int main(int argc, char *argv[])
 	gtk_main();
 
 	g_object_unref(client);
+#endif
 
 	return 0;
 }

@@ -32,6 +32,7 @@
 
 static void changed_callback(GtkWidget *editable, gpointer user_data)
 {
+#if 0
 	struct config_data *data = user_data;
 	gint active;
 
@@ -51,6 +52,7 @@ static void changed_callback(GtkWidget *editable, gpointer user_data)
 		update_wifi_policy(data, CONNMAN_POLICY_OFF);
 		break;
 	}
+#endif
 }
 
 void add_wifi_policy(GtkWidget *mainbox, struct config_data *data)
@@ -114,6 +116,7 @@ void add_wifi_policy(GtkWidget *mainbox, struct config_data *data)
 
 void update_wifi_policy(struct config_data *data, guint policy)
 {
+#if 0
 	GtkWidget *combo = data->policy.config;
 	gchar *info = NULL;
 
@@ -141,4 +144,5 @@ void update_wifi_policy(struct config_data *data, guint policy)
 	gtk_label_set_markup(GTK_LABEL(data->policy.label), info);
 
 	g_free(info);
+#endif
 }
