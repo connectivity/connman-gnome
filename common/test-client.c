@@ -30,78 +30,251 @@
 
 static ConnmanClient *client;
 
-static void proxy_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
-			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
+static const gchar *type2str(guint type)
 {
-	DBusGProxy *proxy;
-	gchar *markup;
+	switch (type) {
+	case CONNMAN_TYPE_UNKNOWN:
+		return "Unknown";
+	case CONNMAN_TYPE_ETHERNET:
+		return "Ethernet";
+	case CONNMAN_TYPE_WIFI:
+		return "WiFi";
+	case CONNMAN_TYPE_WIMAX:
+		return "WiMAX";
+	case CONNMAN_TYPE_BLUETOOTH:
+		return "Bluetooth";
+	}
 
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
-
-	markup = g_strdup_printf("<b>%s</b>\n"
-					"<span size=\"xx-small\">%s\n\n</span>",
-					dbus_g_proxy_get_interface(proxy),
-						dbus_g_proxy_get_path(proxy));
-	g_object_set(cell, "markup", markup, NULL);
-	g_free(markup);
-
-	g_object_unref(proxy);
+	return NULL;
 }
 
-static void name_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
+static const gchar *state2str(guint state)
+{
+	switch (state) {
+	case CONNMAN_STATE_UNKNOWN:
+		return "Unknown";
+	case CONNMAN_STATE_IDLE:
+		return "Not connected";
+	case CONNMAN_STATE_CARRIER:
+		return "Carrier detected";
+	case CONNMAN_STATE_ASSOCIATION:
+		return "Trying to connect";
+	case CONNMAN_STATE_CONFIGURATION:
+		return "Running configuration";
+	case CONNMAN_STATE_READY:
+		return "Connected";
+	}
+
+	return NULL;
+}
+
+static const gchar *security2str(guint security)
+{
+	switch (security) {
+	case CONNMAN_SECURITY_UNKNOWN:
+		return "Unknown";
+	case CONNMAN_SECURITY_NONE:
+		return "No";
+	case CONNMAN_SECURITY_WEP:
+		return "WEP";
+	case CONNMAN_SECURITY_WPA:
+		return "WPA";
+	case CONNMAN_SECURITY_WPA2:
+		return "WPA2";
+	}
+
+	return NULL;
+}
+
+static void service_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
-	gchar *name, *icon;
+	gchar *name;
 	guint type;
+	gboolean favorite;
 	gchar *markup;
 
 	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_NAME, &name,
-					CONNMAN_COLUMN_ICON, &icon,
-					CONNMAN_COLUMN_TYPE, &type, -1);
+					CONNMAN_COLUMN_TYPE, &type,
+					CONNMAN_COLUMN_FAVORITE, &favorite, -1);
 
-	markup = g_strdup_printf("Name: %s\nIcon: %s\nType: %d",
-							name, icon, type);
+	markup = g_strdup_printf("<b>%s</b>\n"
+				"<span size=\"small\">%s service%s</span>",
+				name ? name : type2str(type), type2str(type),
+					favorite == TRUE ? " *" : "");
 	g_object_set(cell, "markup", markup, NULL);
 	g_free(markup);
 
-	g_free(icon);
 	g_free(name);
 }
 
 static void status_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
-	gboolean enabled, inrange, remember;
+	guint state, strength, security;
 	gchar *markup;
 
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_ENABLED, &enabled,
-					CONNMAN_COLUMN_INRANGE, &inrange,
-					CONNMAN_COLUMN_REMEMBER, &remember, -1);
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_STATE, &state,
+					CONNMAN_COLUMN_STRENGTH, &strength,
+					CONNMAN_COLUMN_SECURITY, &security, -1);
 
-	markup = g_strdup_printf("Enabled: %d\n"
-					"InRange: %d\nRemember: %d",
-						enabled, inrange, remember);
+	markup = g_strdup_printf("<b>%s</b>\n"
+			"<span size=\"small\">%d%% - %s protection</span>",
+			state == CONNMAN_STATE_UNKNOWN ? "" : state2str(state),
+					strength, security2str(security));
 	g_object_set(cell, "markup", markup, NULL);
 	g_free(markup);
 }
 
-static void network_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
-			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
+static void drag_data_get(GtkWidget *widget, GdkDragContext *context,
+				GtkSelectionData *data, guint info,
+					guint time, gpointer user_data)
 {
-	guint strength, security;
-	gchar *secret;
-	gchar *markup;
+	printf("drag-data-get\n");
+}
 
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_STRENGTH, &strength,
-					CONNMAN_COLUMN_SECURITY, &security,
-					CONNMAN_COLUMN_PASSPHRASE, &secret, -1);
+static void drag_data_received(GtkWidget *widget, GdkDragContext *context,
+				gint x, gint y, GtkSelectionData *data,
+				guint info, guint time, gpointer user_data)
+{
+	GtkTreePath *path;
 
-	markup = g_strdup_printf("Strength: %d\nSecurity: %d\nSecret: %s",
-						strength, security, secret);
-	g_object_set(cell, "markup", markup, NULL);
-	g_free(markup);
+	printf("drag-data-received %d,%d\n", x, y);
 
-	g_free(secret);
+	if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(widget),
+				x, y, &path, NULL, NULL, NULL) == FALSE)
+		return;
+
+	printf("path %s\n", gtk_tree_path_to_string(path));
+
+	gtk_tree_path_free(path);
+}
+
+static gboolean drag_drop(GtkWidget *widget, GdkDragContext *drag_context,
+				gint x, gint y, guint time, gpointer user_data)
+{
+	printf("drag-drop %d,%d\n", x, y);
+
+	return FALSE;
+}
+
+static void connect_callback(GtkWidget *widget, gpointer user_data)
+{
+	g_print("connect\n");
+}
+
+static void disconnect_callback(GtkWidget *widget, gpointer user_data)
+{
+	g_print("disconnect\n");
+}
+
+static void remove_callback(GtkWidget *widget, gpointer user_data)
+{
+	g_print("remove\n");
+}
+
+static void show_popup(GtkWidget *widget,
+				GdkEventButton *event, gpointer userdata)
+{
+	GtkWidget *menu;
+	GtkWidget *item;
+
+	menu = gtk_menu_new();
+
+	item = gtk_menu_item_new_with_label("Connect");
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+	g_signal_connect(G_OBJECT(item), "activate",
+					G_CALLBACK(connect_callback), NULL);
+
+	item = gtk_menu_item_new_with_label("Disconnect");
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+	g_signal_connect(G_OBJECT(item), "activate",
+					G_CALLBACK(disconnect_callback), NULL);
+
+	item = gtk_menu_item_new_with_label("Remove");
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+	g_signal_connect(G_OBJECT(item), "activate",
+					G_CALLBACK(remove_callback), NULL);
+
+	gtk_widget_show_all(menu);
+
+	gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
+					(event != NULL) ? event->button : 0,
+					gdk_event_get_time((GdkEvent*) event));
+}
+
+static gboolean button_pressed(GtkWidget *widget,
+				GdkEventButton *event, gpointer user_data)
+{
+	GtkTreeSelection *selection;
+	GtkTreePath *path;
+
+	if (event->type != GDK_BUTTON_PRESS)
+		return FALSE;
+
+	if (event->button != 3)
+		return FALSE;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(widget));
+
+	if (gtk_tree_selection_count_selected_rows(selection) != 1)
+		return FALSE;
+
+	if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(widget),
+					(gint) event->x, (gint) event->y,
+					&path, NULL, NULL, NULL) == FALSE)
+		return FALSE;
+
+	gtk_tree_selection_unselect_all(selection);
+	gtk_tree_selection_select_path(selection, path);
+
+	gtk_tree_path_free(path);
+
+	show_popup(widget, event, user_data);
+
+	return TRUE;
+}
+
+static gboolean popup_callback(GtkWidget *widget, gpointer user_data)
+{
+	GtkTreeSelection *selection;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(widget));
+
+	if (gtk_tree_selection_count_selected_rows(selection) != 1)
+		return FALSE;
+
+	show_popup(widget, NULL, user_data);
+
+	return TRUE;
+}
+
+static void select_callback(GtkTreeSelection *selection, gpointer user_data)
+{
+	GtkTreeView *tree = user_data;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	gboolean selected, favorite = FALSE;
+	const GtkTargetEntry row_targets[] = {
+		{ "resorting", GTK_TARGET_SAME_WIDGET, 0 }
+	};
+
+	selected = gtk_tree_selection_get_selected(selection, &model, &iter);
+	if (selected == TRUE)
+		gtk_tree_model_get(model, &iter,
+				CONNMAN_COLUMN_FAVORITE, &favorite, -1);
+
+	if (favorite == TRUE) {
+		gtk_tree_view_enable_model_drag_source(tree, GDK_BUTTON1_MASK,
+				row_targets, G_N_ELEMENTS(row_targets),
+							GDK_ACTION_MOVE);
+	gtk_tree_view_enable_model_drag_dest(tree,
+				row_targets, G_N_ELEMENTS(row_targets),
+							GDK_ACTION_MOVE);
+	} else {
+		gtk_tree_view_unset_rows_drag_source(tree);
+		gtk_tree_view_unset_rows_drag_dest(tree);
+	}
 }
 
 static GtkWidget *create_tree(void)
@@ -109,35 +282,61 @@ static GtkWidget *create_tree(void)
 	GtkWidget *tree;
 	GtkTreeModel *model;
 	GtkTreeSelection *selection;
+	GtkTreeViewColumn *column;
+	GtkCellRenderer *renderer;
 
 	tree = gtk_tree_view_new();
+	gtk_tree_view_set_show_expanders(GTK_TREE_VIEW(tree), FALSE);
 	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(tree), TRUE);
 	gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(tree), TRUE);
+	gtk_tree_view_set_grid_lines(GTK_TREE_VIEW(tree),
+					GTK_TREE_VIEW_GRID_LINES_NONE);
 
-	gtk_tree_view_insert_column_with_data_func(GTK_TREE_VIEW(tree), -1,
-				"Proxy", gtk_cell_renderer_text_new(),
-					proxy_to_text, NULL, NULL);
+	column = gtk_tree_view_column_new();
+	gtk_tree_view_column_set_title(column, "Service");
+	gtk_tree_view_column_set_expand(column, TRUE);
+	gtk_tree_view_column_set_spacing(column, 6);
+	gtk_tree_view_column_set_min_width(column, 250);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(tree), column);
 
-	gtk_tree_view_insert_column_with_data_func(GTK_TREE_VIEW(tree), -1,
-				"Name", gtk_cell_renderer_text_new(),
-					name_to_text, NULL, NULL);
+	renderer = gtk_cell_renderer_pixbuf_new();
+	gtk_tree_view_column_pack_start(column, renderer, FALSE);
+	gtk_tree_view_column_add_attribute(column, renderer,
+					"icon-name", CONNMAN_COLUMN_ICON);
+
+	renderer = gtk_cell_renderer_text_new();
+	gtk_tree_view_column_pack_end(column, renderer, TRUE);
+	gtk_tree_view_column_set_cell_data_func(column, renderer,
+					service_to_text, NULL, NULL);
 
 	gtk_tree_view_insert_column_with_data_func(GTK_TREE_VIEW(tree), -1,
 				"Status", gtk_cell_renderer_text_new(),
-					status_to_text, NULL, NULL);
-
-	gtk_tree_view_insert_column_with_data_func(GTK_TREE_VIEW(tree), -1,
-				"Network", gtk_cell_renderer_text_new(),
-					network_to_text, NULL, NULL);
+						status_to_text, NULL, NULL);
 
 	model = connman_client_get_model(client);
 	gtk_tree_view_set_model(GTK_TREE_VIEW(tree), model);
 	g_object_unref(model);
 
+	gtk_tree_view_set_search_column(GTK_TREE_VIEW(tree),
+						CONNMAN_COLUMN_NAME);
+
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_SINGLE);
 
-	gtk_tree_view_expand_all(GTK_TREE_VIEW(tree));
+	g_signal_connect(G_OBJECT(selection), "changed",
+					G_CALLBACK(select_callback), tree);
+
+	g_signal_connect(G_OBJECT(tree), "button-press-event",
+					G_CALLBACK(button_pressed), NULL);
+	g_signal_connect(G_OBJECT(tree), "popup-menu",
+					G_CALLBACK(popup_callback), NULL);
+
+	g_signal_connect(G_OBJECT(tree), "drag-drop",
+					G_CALLBACK(drag_drop), NULL);
+	g_signal_connect(G_OBJECT(tree), "drag-data-get",
+					G_CALLBACK(drag_data_get), selection);
+	g_signal_connect(G_OBJECT(tree), "drag-data-received",
+					G_CALLBACK(drag_data_received), NULL);
 
 	return tree;
 }
@@ -177,7 +376,7 @@ static GtkWidget *create_window(void)
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(GTK_WINDOW(window), "Client Test");
 	gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
-	gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
+	gtk_window_set_default_size(GTK_WINDOW(window), 480, 400);
 	g_signal_connect(G_OBJECT(window), "delete-event",
 					G_CALLBACK(delete_callback), NULL);
 

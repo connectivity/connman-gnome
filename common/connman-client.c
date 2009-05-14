@@ -45,6 +45,7 @@ struct _ConnmanClientPrivate {
 	GtkTreeStore *store;
 	DBusGProxy *dbus;
 	DBusGProxy *manager;
+	GHashTable *services;
 	ConnmanClientCallback callback;
 	gpointer userdata;
 };
@@ -90,18 +91,41 @@ done:
 
 static DBusGConnection *connection = NULL;
 
+static gint compare_index(GtkTreeModel *model, GtkTreeIter *iter1,
+					GtkTreeIter *iter2, gpointer user_data)
+{
+	guint index1, index2;
+
+	gtk_tree_model_get(model, iter1, CONNMAN_COLUMN_INDEX, &index1, -1);
+	gtk_tree_model_get(model, iter2, CONNMAN_COLUMN_INDEX, &index2, -1);
+
+	return (gint) index2 - (gint) index1;
+}
+
 static void connman_client_init(ConnmanClient *client)
 {
 	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
 
 	DBG("client %p", client);
 
-	priv->store = gtk_tree_store_new(_CONNMAN_NUM_COLUMNS, G_TYPE_OBJECT,
-			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT,
-			G_TYPE_BOOLEAN, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN,
-			G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING,
-			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT,
-							G_TYPE_STRING);
+	priv->store = gtk_tree_store_new(_CONNMAN_NUM_COLUMNS,
+				G_TYPE_OBJECT,	/* proxy */
+				G_TYPE_UINT,	/* index */
+				G_TYPE_STRING,	/* name */
+				G_TYPE_STRING,	/* icon */
+				G_TYPE_UINT,	/* type */
+				G_TYPE_UINT,	/* state */
+				G_TYPE_BOOLEAN,	/* favorite */
+				G_TYPE_UINT,	/* strength */
+				G_TYPE_UINT,	/* security */
+				G_TYPE_STRING);	/* passphrase */
+
+	gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(priv->store),
+						compare_index, NULL, NULL);
+
+	gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(priv->store),
+				GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID,
+							GTK_SORT_DESCENDING);
 
 	g_object_set_data(G_OBJECT(priv->store),
 					"State", g_strdup("unavailable"));
@@ -186,157 +210,6 @@ GtkTreeModel *connman_client_get_model(ConnmanClient *client)
 	return model;
 }
 
-static gboolean device_filter(GtkTreeModel *model,
-					GtkTreeIter *iter, gpointer user_data)
-{
-	DBusGProxy *proxy;
-	gboolean active;
-
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
-
-	if (proxy == NULL)
-		return FALSE;
-
-	active = g_str_equal(CONNMAN_DEVICE_INTERFACE,
-					dbus_g_proxy_get_interface(proxy));
-
-	g_object_unref(proxy);
-
-	return active;
-}
-
-GtkTreeModel *connman_client_get_device_model(ConnmanClient *client)
-{
-	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
-	GtkTreeModel *model;
-
-	DBG("client %p", client);
-
-	model = gtk_tree_model_filter_new(GTK_TREE_MODEL(priv->store), NULL);
-
-	gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(model),
-						device_filter, NULL, NULL);
-
-	return model;
-}
-
-static gboolean device_network_filter(GtkTreeModel *model,
-					GtkTreeIter *iter, gpointer user_data)
-{
-	DBusGProxy *proxy;
-	gboolean active;
-
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
-
-	if (proxy == NULL)
-		return FALSE;
-
-	active = g_str_equal(CONNMAN_DEVICE_INTERFACE,
-					dbus_g_proxy_get_interface(proxy));
-	if (active == FALSE)
-		active = g_str_equal(CONNMAN_NETWORK_INTERFACE,
-					dbus_g_proxy_get_interface(proxy));
-
-	g_object_unref(proxy);
-
-	return active;
-}
-
-GtkTreeModel *connman_client_get_device_network_model(ConnmanClient *client)
-{
-	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
-	GtkTreeModel *model;
-
-	DBG("client %p", client);
-
-	model = gtk_tree_model_filter_new(GTK_TREE_MODEL(priv->store), NULL);
-
-	gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(model),
-					device_network_filter, NULL, NULL);
-
-	return model;
-}
-
-GtkTreeModel *connman_client_get_network_model(ConnmanClient *client,
-							const gchar *device)
-{
-	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
-	GtkTreeModel *model;
-	GtkTreePath *path;
-	GtkTreeIter iter;
-	gboolean cont, found = FALSE;
-
-	DBG("client %p", client);
-
-	cont = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(priv->store),
-									&iter);
-
-	while (cont == TRUE) {
-		DBusGProxy *proxy;
-
-		gtk_tree_model_get(GTK_TREE_MODEL(priv->store), &iter,
-					CONNMAN_COLUMN_PROXY, &proxy, -1);
-
-		if (g_str_equal(CONNMAN_DEVICE_INTERFACE,
-				dbus_g_proxy_get_interface(proxy)) == TRUE)
-			found = g_str_has_prefix(dbus_g_proxy_get_path(proxy),
-									device);
-
-		g_object_unref(proxy);
-
-		if (found == TRUE)
-			break;
-
-		cont = gtk_tree_model_iter_next(GTK_TREE_MODEL(priv->store),
-									&iter);
-	}
-
-	if (found == TRUE) {
-		path = gtk_tree_model_get_path(GTK_TREE_MODEL(priv->store),
-									&iter);
-		model = gtk_tree_model_filter_new(GTK_TREE_MODEL(priv->store),
-									path);
-		gtk_tree_path_free(path);
-	} else
-		model = NULL;
-
-	return model;
-}
-
-static gboolean connection_filter(GtkTreeModel *model,
-					GtkTreeIter *iter, gpointer user_data)
-{
-	DBusGProxy *proxy;
-	gboolean active;
-
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
-
-	if (proxy == NULL)
-		return FALSE;
-
-	active = g_str_equal(CONNMAN_CONNECTION_INTERFACE,
-					dbus_g_proxy_get_interface(proxy));
-
-	g_object_unref(proxy);
-
-	return active;
-}
-
-GtkTreeModel *connman_client_get_connection_model(ConnmanClient *client)
-{
-	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
-	GtkTreeModel *model;
-
-	DBG("client %p", client);
-
-	model = gtk_tree_model_filter_new(GTK_TREE_MODEL(priv->store), NULL);
-
-	gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(model),
-						connection_filter, NULL, NULL);
-
-	return model;
-}
-
 void connman_client_set_policy(ConnmanClient *client, const gchar *device,
 							const gchar *policy)
 {
@@ -389,19 +262,14 @@ static gboolean device_scan(GtkTreeModel *model, GtkTreePath *path,
 					GtkTreeIter *iter, gpointer user_data)
 {
 	DBusGProxy *proxy;
-	gboolean enabled;
 
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy,
-					CONNMAN_COLUMN_ENABLED, &enabled, -1);
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
 
 	if (proxy == NULL)
 		return FALSE;
 
 	if (g_str_equal(dbus_g_proxy_get_interface(proxy),
 					CONNMAN_DEVICE_INTERFACE) == FALSE)
-		return FALSE;
-
-	if (enabled == FALSE)
 		return FALSE;
 
 	connman_propose_scan(proxy, NULL);
@@ -437,10 +305,8 @@ static gboolean network_disconnect(GtkTreeModel *model, GtkTreePath *path,
 					GtkTreeIter *iter, gpointer user_data)
 {
 	DBusGProxy *proxy;
-	gboolean enabled;
 
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy,
-					CONNMAN_COLUMN_ENABLED, &enabled, -1);
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
 
 	if (proxy == NULL)
 		return FALSE;
@@ -449,12 +315,11 @@ static gboolean network_disconnect(GtkTreeModel *model, GtkTreePath *path,
 					CONNMAN_NETWORK_INTERFACE) == FALSE)
 		return FALSE;
 
-	if (enabled == TRUE)
-		connman_disconnect(proxy, NULL);
+	connman_disconnect(proxy, NULL);
 
 	g_object_unref(proxy);
 
-	return enabled;
+	return TRUE;
 }
 
 void connman_client_connect(ConnmanClient *client, const gchar *network)
@@ -567,33 +432,7 @@ void connman_client_set_passphrase(ConnmanClient *client, const gchar *network,
 	g_value_init(&value, G_TYPE_STRING);
 	g_value_set_string(&value, passphrase);
 
-	connman_set_property(proxy, "WiFi.Passphrase", &value, NULL);
-
-	g_value_unset(&value);
-
-	g_object_unref(proxy);
-}
-
-void connman_client_set_remember(ConnmanClient *client, const gchar *network,
-							gboolean remember)
-{
-	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
-	DBusGProxy *proxy;
-	GValue value = { 0 };
-
-	DBG("client %p", client);
-
-	if (network == NULL)
-		return;
-
-	proxy = connman_dbus_get_proxy(priv->store, network);
-	if (proxy == NULL)
-		return;
-
-	g_value_init(&value, G_TYPE_BOOLEAN);
-	g_value_set_boolean(&value, remember);
-
-	connman_set_property(proxy, "Remember", &value, NULL);
+	connman_set_property(proxy, "Passphrase", &value, NULL);
 
 	g_value_unset(&value);
 

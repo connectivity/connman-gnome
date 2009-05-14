@@ -151,83 +151,12 @@ static void iterate_list(const GValue *value, gpointer user_data)
 	if (path == NULL)
 		return;
 
-	*list = g_slist_prepend(*list, path);
+	*list = g_slist_append(*list, path);
 }
 
 static gint compare_path(gconstpointer a, gconstpointer b)
 {
 	return g_strcmp0(a, b);
-}
-
-static void property_update(GtkTreeStore *store, const GValue *value,
-			const char *key, connman_get_properties_reply callback)
-{
-	GSList *list, *link, *old_list, *new_list = NULL;
-	const char *iface;
-
-	DBG("store %p key %s", store, key);
-
-	if (g_str_equal(key, "Connections") == TRUE)
-		iface = CONNMAN_CONNECTION_INTERFACE;
-	else if (g_str_equal(key, "Devices") == TRUE)
-		iface = CONNMAN_DEVICE_INTERFACE;
-	else
-		iface = CONNMAN_NETWORK_INTERFACE;
-
-	old_list = g_object_get_data(G_OBJECT(store), key);
-
-	dbus_g_type_collection_value_iterate(value, iterate_list, &new_list);
-
-	g_object_set_data(G_OBJECT(store), key, new_list);
-
-	for (list = new_list; list; list = list->next) {
-		gchar *path = list->data;
-		DBusGProxy *proxy;
-
-		DBG("new path %s", path);
-
-		link = g_slist_find_custom(old_list, path, compare_path);
-		if (link != NULL) {
-			g_free(link->data);
-			old_list = g_slist_delete_link(old_list, link);
-		}
-
-		proxy = dbus_g_proxy_new_for_name(connection,
-						CONNMAN_SERVICE, path, iface);
-		if (proxy == NULL)
-			continue;
-
-		DBG("getting %s properties", key);
-
-		connman_get_properties_async(proxy, callback, store);
-	}
-
-	for (list = old_list; list; list = list->next) {
-		gchar *path = list->data;
-		GtkTreeIter iter;
-		gchar *device = NULL;
-
-		DBG("old path %s", path);
-
-		if (get_iter_from_path(store, &iter, path) == TRUE) {
-			if (g_str_equal(key, "Connections") == TRUE)
-				gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
-					CONNMAN_COLUMN_DEVICE, &device, -1);
-
-			gtk_tree_store_remove(store, &iter);
-		}
-
-		if (get_iter_from_path(store, &iter, device) == TRUE) {
-			gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_INRANGE, FALSE,
-					CONNMAN_COLUMN_ADDRESS, NULL, -1);
-		}
-
-		g_free(device);
-		g_free(path);
-	}
-
-	g_slist_free(old_list);
 }
 
 static guint get_type(const GValue *value)
@@ -263,22 +192,24 @@ static const gchar *type2icon(guint type)
 	return NULL;
 }
 
-static guint get_policy(const GValue *value)
+static guint get_state(const GValue *value)
 {
-	const char *policy = value ? g_value_get_string(value) : NULL;
+	const char *type = value ? g_value_get_string(value) : NULL;
 
-	if (policy == NULL)
-		return CONNMAN_POLICY_UNKNOWN;
-	else if (g_str_equal(policy, "ignore") == TRUE)
-		return CONNMAN_POLICY_IGNORE;
-	else if (g_str_equal(policy, "off") == TRUE)
-		return CONNMAN_POLICY_OFF;
-	else if (g_str_equal(policy, "auto") == TRUE)
-		return CONNMAN_POLICY_AUTO;
-	else if (g_str_equal(policy, "manual") == TRUE)
-		return CONNMAN_POLICY_MANUAL;
+	if (type == NULL)
+		return CONNMAN_STATE_UNKNOWN;
+	else if (g_str_equal(type, "idle") == TRUE)
+		return CONNMAN_STATE_IDLE;
+	else if (g_str_equal(type, "carrier") == TRUE)
+		return CONNMAN_STATE_CARRIER;
+	else if (g_str_equal(type, "association") == TRUE)
+		return CONNMAN_STATE_ASSOCIATION;
+	else if (g_str_equal(type, "configuration") == TRUE)
+		return CONNMAN_STATE_CONFIGURATION;
+	else if (g_str_equal(type, "ready") == TRUE)
+		return CONNMAN_STATE_READY;
 
-	return CONNMAN_POLICY_UNKNOWN;
+	return CONNMAN_STATE_UNKNOWN;
 }
 
 static guint get_security(const GValue *value)
@@ -299,7 +230,7 @@ static guint get_security(const GValue *value)
 	return CONNMAN_SECURITY_UNKNOWN;
 }
 
-static void network_changed(DBusGProxy *proxy, const char *property,
+static void service_changed(DBusGProxy *proxy, const char *property,
 					GValue *value, gpointer user_data)
 {
 	GtkTreeStore *store = user_data;
@@ -314,18 +245,14 @@ static void network_changed(DBusGProxy *proxy, const char *property,
 	if (get_iter_from_path(store, &iter, path) == FALSE)
 		return;
 
-	if (g_str_equal(property, "Connected") == TRUE) {
-		gboolean connected = g_value_get_boolean(value);
+	if (g_str_equal(property, "State") == TRUE) {
+		guint state = get_state(value);
 		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_ENABLED, connected, -1);
-	} else if (g_str_equal(property, "Available") == TRUE) {
-		gboolean inrange = g_value_get_boolean(value);
+					CONNMAN_COLUMN_STATE, state, -1);
+	} else if (g_str_equal(property, "Favorite") == TRUE) {
+		gboolean favorite = g_value_get_boolean(value);
 		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_INRANGE, inrange, -1);
-	} else if (g_str_equal(property, "Remember") == TRUE) {
-		gboolean remember = g_value_get_boolean(value);
-		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_REMEMBER, remember, -1);
+					CONNMAN_COLUMN_FAVORITE, favorite, -1);
 	} else if (g_str_equal(property, "Strength") == TRUE) {
 		guint strength = g_value_get_uchar(value);
 		gtk_tree_store_set(store, &iter,
@@ -333,115 +260,82 @@ static void network_changed(DBusGProxy *proxy, const char *property,
 	}
 }
 
-static void network_properties(DBusGProxy *proxy, GHashTable *hash,
-					GError *error, gpointer user_data)
+static void property_update(GtkTreeStore *store, const GValue *value,
+					connman_get_properties_reply callback)
 {
-	GtkTreeStore *store = user_data;
-	GValue *value;
-	const gchar *device, *name, *secret;
-	gboolean connected, inrange, remember;
-	guint strength, security;
-	GtkTreeIter iter, parent;
+	GSList *list, *link, *old_list, *new_list = NULL;
+	guint index = 0;
 
-	DBG("store %p proxy %p hash %p", store, proxy, hash);
+	DBG("store %p", store);
 
-	if (error != NULL || hash == NULL)
-		goto done;
+	old_list = g_object_get_data(G_OBJECT(store), "Services");
 
-	value = g_hash_table_lookup(hash, "Device");
-	device = value ? g_value_get_boxed(value) : NULL;
+	dbus_g_type_collection_value_iterate(value, iterate_list, &new_list);
 
-	value = g_hash_table_lookup(hash, "Name");
-	name = value ? g_value_get_string(value) : NULL;
+	g_object_set_data(G_OBJECT(store), "Services", new_list);
 
-	value = g_hash_table_lookup(hash, "Connected");
-	connected = value ? g_value_get_boolean(value) : FALSE;
+	for (list = new_list; list; list = list->next) {
+		gchar *path = list->data;
+		DBusGProxy *proxy;
+		GtkTreeIter iter;
 
-	value = g_hash_table_lookup(hash, "Available");
-	inrange = value ? g_value_get_boolean(value) : FALSE;
+		DBG("new path %s", path);
 
-	value = g_hash_table_lookup(hash, "Remember");
-	remember = value ? g_value_get_boolean(value) : FALSE;
+		link = g_slist_find_custom(old_list, path, compare_path);
+		if (link != NULL) {
+			g_free(link->data);
+			old_list = g_slist_delete_link(old_list, link);
+		}
 
-	value = g_hash_table_lookup(hash, "Strength");
-	strength = value ? g_value_get_uchar(value) : 0;
+		proxy = dbus_g_proxy_new_for_name(connection,
+						CONNMAN_SERVICE, path,
+						CONNMAN_SERVICE_INTERFACE);
+		if (proxy == NULL)
+			continue;
 
-	value = g_hash_table_lookup(hash, "WiFi.Security");
-	security = get_security(value);
-
-	value = g_hash_table_lookup(hash, "WiFi.Passphrase");
-	secret = value ? g_value_get_string(value) : NULL;
-
-	DBG("name %s strength %d", name, strength);
-
-	if (get_iter_from_path(store, &parent, device) == FALSE)
-		return;
-
-	if (get_iter_from_proxy(store, &iter, proxy) == FALSE) {
-		gtk_tree_store_insert_with_values(store, &iter, &parent, -1,
+		if (get_iter_from_proxy(store, &iter, proxy) == FALSE) {
+			gtk_tree_store_insert_with_values(store, &iter, NULL, -1,
 					CONNMAN_COLUMN_PROXY, proxy,
-					CONNMAN_COLUMN_NAME, name,
-					CONNMAN_COLUMN_ENABLED, connected,
-					CONNMAN_COLUMN_INRANGE, inrange,
-					CONNMAN_COLUMN_REMEMBER, remember,
-					CONNMAN_COLUMN_STRENGTH, strength,
-					CONNMAN_COLUMN_SECURITY, security,
-					CONNMAN_COLUMN_PASSPHRASE, secret, -1);
+					CONNMAN_COLUMN_INDEX, index, -1);
 
-		dbus_g_proxy_add_signal(proxy, "PropertyChanged",
+			dbus_g_proxy_add_signal(proxy, "PropertyChanged",
 				G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
-		dbus_g_proxy_connect_signal(proxy, "PropertyChanged",
-				G_CALLBACK(network_changed), store, NULL);
-	} else
-		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_NAME, name,
-					CONNMAN_COLUMN_ENABLED, connected,
-					CONNMAN_COLUMN_INRANGE, inrange,
-					CONNMAN_COLUMN_REMEMBER, remember,
-					CONNMAN_COLUMN_STRENGTH, strength,
-					CONNMAN_COLUMN_SECURITY, security,
-					CONNMAN_COLUMN_PASSPHRASE, secret, -1);
+			dbus_g_proxy_connect_signal(proxy, "PropertyChanged",
+				G_CALLBACK(service_changed), store, NULL);
+		} else
+			gtk_tree_store_set(store, &iter,
+					CONNMAN_COLUMN_INDEX, index, -1);
 
-done:
-	g_object_unref(proxy);
+		DBG("getting %s properties", "Services");
+
+		connman_get_properties_async(proxy, callback, store);
+
+		index++;
+	}
+
+	for (list = old_list; list; list = list->next) {
+		gchar *path = list->data;
+		GtkTreeIter iter;
+
+		DBG("old path %s", path);
+
+		if (get_iter_from_path(store, &iter, path) == TRUE)
+			gtk_tree_store_remove(store, &iter);
+
+		g_free(path);
+	}
+
+	g_slist_free(old_list);
 }
 
-static void device_changed(DBusGProxy *proxy, const char *property,
-					GValue *value, gpointer user_data)
-{
-	GtkTreeStore *store = user_data;
-	const char *path = dbus_g_proxy_get_path(proxy);
-	GtkTreeIter iter;
-
-	DBG("store %p proxy %p property %s", store, proxy, property);
-
-	if (property == NULL || value == NULL)
-		return;
-
-	if (get_iter_from_path(store, &iter, path) == FALSE)
-		return;
-
-	if (g_str_equal(property, "Policy") == TRUE) {
-		guint policy = get_policy(value);
-		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_POLICY, policy, -1);
-	} else if (g_str_equal(property, "Powered") == TRUE) {
-		gboolean powered = g_value_get_boolean(value);
-		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_ENABLED, powered, -1);
-	} else if (g_str_equal(property, "Networks") == TRUE)
-		property_update(store, value, path, network_properties);
-}
-
-static void device_properties(DBusGProxy *proxy, GHashTable *hash,
+static void service_properties(DBusGProxy *proxy, GHashTable *hash,
 					GError *error, gpointer user_data)
 {
 	GtkTreeStore *store = user_data;
-	const char *path = dbus_g_proxy_get_path(proxy);
 	GValue *value;
 	const gchar *name, *icon;
-	guint type, policy;
-	gboolean powered;
+	guint type, state, strength, security;
+	gboolean favorite;
 	GtkTreeIter iter;
 
 	DBG("store %p proxy %p hash %p", store, proxy, hash);
@@ -456,11 +350,17 @@ static void device_properties(DBusGProxy *proxy, GHashTable *hash,
 	type = get_type(value);
 	icon = type2icon(type);
 
-	value = g_hash_table_lookup(hash, "Policy");
-	policy = get_policy(value);
+	value = g_hash_table_lookup(hash, "State");
+	state = get_state(value);
 
-	value = g_hash_table_lookup(hash, "Powered");
-	powered = value ? g_value_get_boolean(value) : FALSE;
+	value = g_hash_table_lookup(hash, "Favorite");
+	favorite = value ? g_value_get_boolean(value) : FALSE;
+
+	value = g_hash_table_lookup(hash, "Strength");
+	strength= value ? g_value_get_uchar(value) : 0;
+
+	value = g_hash_table_lookup(hash, "Security");
+	security = get_security(value);
 
 	DBG("name %s type %d icon %s", name, type, icon);
 
@@ -470,115 +370,24 @@ static void device_properties(DBusGProxy *proxy, GHashTable *hash,
 					CONNMAN_COLUMN_NAME, name,
 					CONNMAN_COLUMN_ICON, icon,
 					CONNMAN_COLUMN_TYPE, type,
-					CONNMAN_COLUMN_ENABLED, powered,
-					CONNMAN_COLUMN_POLICY, policy, -1);
+					CONNMAN_COLUMN_STATE, state,
+					CONNMAN_COLUMN_FAVORITE, favorite,
+					CONNMAN_COLUMN_STRENGTH, strength,
+					CONNMAN_COLUMN_SECURITY, security, -1);
 
 		dbus_g_proxy_add_signal(proxy, "PropertyChanged",
 				G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
 		dbus_g_proxy_connect_signal(proxy, "PropertyChanged",
-				G_CALLBACK(device_changed), store, NULL);
+				G_CALLBACK(service_changed), store, NULL);
 	} else
 		gtk_tree_store_set(store, &iter,
 					CONNMAN_COLUMN_NAME, name,
 					CONNMAN_COLUMN_ICON, icon,
 					CONNMAN_COLUMN_TYPE, type,
-					CONNMAN_COLUMN_ENABLED, powered,
-					CONNMAN_COLUMN_POLICY, policy, -1);
-
-	value = g_hash_table_lookup(hash, "Networks");
-	if (value != NULL)
-		property_update(store, value, path, network_properties);
-
-done:
-	g_object_unref(proxy);
-}
-
-static void connection_changed(DBusGProxy *proxy, const char *property,
-					GValue *value, gpointer user_data)
-{
-	GtkTreeStore *store = user_data;
-	const char *path = dbus_g_proxy_get_path(proxy);
-	GtkTreeIter iter;
-
-	DBG("store %p proxy %p property %s", store, proxy, property);
-
-	if (property == NULL || value == NULL)
-		return;
-
-	if (get_iter_from_path(store, &iter, path) == FALSE)
-		return;
-
-	if (g_str_equal(property, "Default") == TRUE) {
-		gboolean enabled = g_value_get_boolean(value);
-		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_ENABLED, enabled, -1);
-	} else if (g_str_equal(property, "Strength") == TRUE) {
-		guint strength = g_value_get_uchar(value);
-		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_STRENGTH, strength, -1);
-	}
-}
-
-static void connection_properties(DBusGProxy *proxy, GHashTable *hash,
-					GError *error, gpointer user_data)
-{
-	GtkTreeStore *store = user_data;
-	GValue *value;
-	guint type, strength;
-	gboolean enabled;
-	const char *device, *address;
-	GtkTreeIter iter;
-
-	DBG("store %p proxy %p hash %p", store, proxy, hash);
-
-	if (error != NULL || hash == NULL)
-		goto done;
-
-	value = g_hash_table_lookup(hash, "Type");
-	type = get_type(value);
-
-	value = g_hash_table_lookup(hash, "Strength");
-	strength = value ? g_value_get_uchar(value) : 0;
-
-	value = g_hash_table_lookup(hash, "Default");
-	enabled = value ? g_value_get_boolean(value) : FALSE;
-
-	value = g_hash_table_lookup(hash, "IPv4.Address");
-	address = value ? g_value_get_string(value) : NULL;
-
-	DBG("type %d address %s", type, address);
-
-	if (get_iter_from_proxy(store, &iter, proxy) == FALSE) {
-		gtk_tree_store_insert_with_values(store, &iter, NULL, -1,
-					CONNMAN_COLUMN_PROXY, proxy,
-					CONNMAN_COLUMN_TYPE, type,
-					CONNMAN_COLUMN_ENABLED, enabled,
+					CONNMAN_COLUMN_STATE, state,
+					CONNMAN_COLUMN_FAVORITE, favorite,
 					CONNMAN_COLUMN_STRENGTH, strength,
-					CONNMAN_COLUMN_ADDRESS, address, -1);
-
-		dbus_g_proxy_add_signal(proxy, "PropertyChanged",
-				G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
-		dbus_g_proxy_connect_signal(proxy, "PropertyChanged",
-				G_CALLBACK(connection_changed), store, NULL);
-	} else
-		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_TYPE, type,
-					CONNMAN_COLUMN_ENABLED, enabled,
-					CONNMAN_COLUMN_STRENGTH, strength, -1);
-
-	value = g_hash_table_lookup(hash, "Device");
-	device = value ? g_value_get_boxed(value) : NULL;
-
-	DBG("device %s", device);
-
-	gtk_tree_store_set(store, &iter, CONNMAN_COLUMN_DEVICE, device, -1);
-
-	if (get_iter_from_path(store, &iter, device) == TRUE) {
-		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_DEVICE, device,
-					CONNMAN_COLUMN_INRANGE, TRUE,
-					CONNMAN_COLUMN_ADDRESS, address, -1);
-	}
+					CONNMAN_COLUMN_SECURITY, security, -1);
 
 done:
 	g_object_unref(proxy);
@@ -609,10 +418,8 @@ static void manager_changed(DBusGProxy *proxy, const char *property,
 		userdata = g_object_get_data(G_OBJECT(store), "userdata");
 		if (callback)
 			callback(state, userdata);
-	} else if (g_str_equal(property, "Connections") == TRUE) {
-		property_update(store, value, property, connection_properties);
-	} else if (g_str_equal(property, "Devices") == TRUE) {
-		property_update(store, value, property, device_properties);
+	} else if (g_str_equal(property, "Services") == TRUE) {
+		property_update(store, value, service_properties);
 	}
 }
 
@@ -637,14 +444,9 @@ static void manager_properties(DBusGProxy *proxy, GHashTable *hash,
 	if (callback)
 		callback(state, NULL);
 
-	value = g_hash_table_lookup(hash, "Devices");
+	value = g_hash_table_lookup(hash, "Services");
 	if (value != NULL)
-		property_update(store, value, "Devices", device_properties);
-
-	value = g_hash_table_lookup(hash, "Connections");
-	if (value != NULL)
-		property_update(store, value,
-					"Connections", connection_properties);
+		property_update(store, value, service_properties);
 }
 
 DBusGProxy *connman_dbus_create_manager(DBusGConnection *conn,

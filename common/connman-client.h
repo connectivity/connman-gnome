@@ -54,11 +54,6 @@ GType connman_client_get_type(void);
 ConnmanClient *connman_client_new(void);
 
 GtkTreeModel *connman_client_get_model(ConnmanClient *client);
-GtkTreeModel *connman_client_get_device_model(ConnmanClient *client);
-GtkTreeModel *connman_client_get_device_network_model(ConnmanClient *client);
-GtkTreeModel *connman_client_get_network_model(ConnmanClient *client,
-							const gchar *device);
-GtkTreeModel *connman_client_get_connection_model(ConnmanClient *client);
 
 void connman_client_set_policy(ConnmanClient *client, const gchar *device,
 							const gchar *policy);
@@ -83,19 +78,15 @@ void connman_client_set_callback(ConnmanClient *client,
 
 enum {
 	CONNMAN_COLUMN_PROXY,		/* G_TYPE_OBJECT  */
+	CONNMAN_COLUMN_INDEX,		/* G_TYPE_UINT    */
 	CONNMAN_COLUMN_NAME,		/* G_TYPE_STRING  */
 	CONNMAN_COLUMN_ICON,		/* G_TYPE_STRING  */
 	CONNMAN_COLUMN_TYPE,		/* G_TYPE_UINT    */
-	CONNMAN_COLUMN_ENABLED,		/* G_TYPE_BOOLEAN */
-	CONNMAN_COLUMN_INRANGE,		/* G_TYPE_BOOLEAN */
-	CONNMAN_COLUMN_REMEMBER,	/* G_TYPE_BOOLEAN */
+	CONNMAN_COLUMN_STATE,		/* G_TYPE_UINT    */
+	CONNMAN_COLUMN_FAVORITE,	/* G_TYPE_BOOLEAN */
 	CONNMAN_COLUMN_STRENGTH,	/* G_TYPE_UINT    */
 	CONNMAN_COLUMN_SECURITY,	/* G_TYPE_UINT    */
 	CONNMAN_COLUMN_PASSPHRASE,	/* G_TYPE_STRING  */
-	CONNMAN_COLUMN_NETWORK,
-	CONNMAN_COLUMN_ADDRESS,
-	CONNMAN_COLUMN_POLICY,
-	CONNMAN_COLUMN_DEVICE,
 	_CONNMAN_NUM_COLUMNS
 };
 
@@ -108,11 +99,12 @@ enum {
 };
 
 enum {
-	CONNMAN_POLICY_UNKNOWN,
-	CONNMAN_POLICY_IGNORE,
-	CONNMAN_POLICY_OFF,
-	CONNMAN_POLICY_AUTO,
-	CONNMAN_POLICY_MANUAL,
+	CONNMAN_STATE_UNKNOWN,
+	CONNMAN_STATE_IDLE,
+	CONNMAN_STATE_CARRIER,
+	CONNMAN_STATE_ASSOCIATION,
+	CONNMAN_STATE_CONFIGURATION,
+	CONNMAN_STATE_READY,
 };
 
 enum {
