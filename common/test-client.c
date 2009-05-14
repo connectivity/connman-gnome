@@ -93,15 +93,20 @@ static void service_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 	guint type;
 	gboolean favorite;
 	gchar *markup;
+	const gchar *format;
 
 	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_NAME, &name,
 					CONNMAN_COLUMN_TYPE, &type,
 					CONNMAN_COLUMN_FAVORITE, &favorite, -1);
 
-	markup = g_strdup_printf("<b>%s</b>\n"
-				"<span size=\"small\">%s service%s</span>",
-				name ? name : type2str(type), type2str(type),
-					favorite == TRUE ? " *" : "");
+	if (favorite == TRUE)
+		format = "<b>%s</b>\n"
+				"<span size=\"small\">%s service</span>";
+	else
+		format = "%s\n<span size=\"small\">%s service</span>";
+
+	markup = g_strdup_printf(format, name ? name : type2str(type),
+							type2str(type));
 	g_object_set(cell, "markup", markup, NULL);
 	g_free(markup);
 
@@ -112,14 +117,23 @@ static void status_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
 	guint state, strength, security;
+	gboolean favorite;
 	gchar *markup;
+	const gchar *format;
 
 	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_STATE, &state,
+					CONNMAN_COLUMN_FAVORITE, &favorite,
 					CONNMAN_COLUMN_STRENGTH, &strength,
+					CONNMAN_COLUMN_FAVORITE, &favorite,
 					CONNMAN_COLUMN_SECURITY, &security, -1);
 
-	markup = g_strdup_printf("<b>%s</b>\n"
-			"<span size=\"small\">%d%% - %s protection</span>",
+	if (favorite == TRUE)
+		format = "<b>%s</b>\n"
+			"<span size=\"small\">%d%% - %s protection</span>";
+	else
+		format = "%s\n<span size=\"small\">%d%% - %s protection</span>";
+
+	markup = g_strdup_printf(format,
 			state == CONNMAN_STATE_UNKNOWN ? "" : state2str(state),
 					strength, security2str(security));
 	g_object_set(cell, "markup", markup, NULL);
@@ -130,7 +144,7 @@ static void drag_data_get(GtkWidget *widget, GdkDragContext *context,
 				GtkSelectionData *data, guint info,
 					guint time, gpointer user_data)
 {
-	printf("drag-data-get\n");
+	g_print("drag-data-get\n");
 }
 
 static void drag_data_received(GtkWidget *widget, GdkDragContext *context,
@@ -139,13 +153,13 @@ static void drag_data_received(GtkWidget *widget, GdkDragContext *context,
 {
 	GtkTreePath *path;
 
-	printf("drag-data-received %d,%d\n", x, y);
+	g_print("drag-data-received %d,%d\n", x, y);
 
 	if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(widget),
 				x, y, &path, NULL, NULL, NULL) == FALSE)
 		return;
 
-	printf("path %s\n", gtk_tree_path_to_string(path));
+	g_print("path %s\n", gtk_tree_path_to_string(path));
 
 	gtk_tree_path_free(path);
 }
@@ -153,7 +167,7 @@ static void drag_data_received(GtkWidget *widget, GdkDragContext *context,
 static gboolean drag_drop(GtkWidget *widget, GdkDragContext *drag_context,
 				gint x, gint y, guint time, gpointer user_data)
 {
-	printf("drag-drop %d,%d\n", x, y);
+	g_print("drag-drop %d,%d\n", x, y);
 
 	return FALSE;
 }
