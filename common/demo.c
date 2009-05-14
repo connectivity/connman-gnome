@@ -28,6 +28,7 @@
 
 #include "connman-client.h"
 
+#if 0
 static gboolean option_fullscreen = FALSE;
 static ConnmanClient *client;
 
@@ -425,9 +426,11 @@ static GOptionEntry options[] = {
 					"Start up in fullscreen mode" },
 	{ NULL },
 };
+#endif
 
 int main(int argc, char *argv[])
 {
+#if 0
 	GError *error = NULL;
 	GtkWidget *window;
 
@@ -460,6 +463,7 @@ int main(int argc, char *argv[])
 	gtk_main();
 
 	g_object_unref(client);
+#endif
 
 	return 0;
 }
