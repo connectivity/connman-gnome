@@ -163,38 +163,6 @@ static void strength_to_value(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 		g_object_set(cell, "visible", FALSE, NULL);
 }
 
-static void drag_data_get(GtkWidget *widget, GdkDragContext *context,
-				GtkSelectionData *data, guint info,
-					guint time, gpointer user_data)
-{
-	g_print("drag-data-get\n");
-}
-
-static void drag_data_received(GtkWidget *widget, GdkDragContext *context,
-				gint x, gint y, GtkSelectionData *data,
-				guint info, guint time, gpointer user_data)
-{
-	GtkTreePath *path;
-
-	g_print("drag-data-received %d,%d\n", x, y);
-
-	if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(widget),
-				x, y, &path, NULL, NULL, NULL) == FALSE)
-		return;
-
-	g_print("path %s\n", gtk_tree_path_to_string(path));
-
-	gtk_tree_path_free(path);
-}
-
-static gboolean drag_drop(GtkWidget *widget, GdkDragContext *context,
-				gint x, gint y, guint time, gpointer user_data)
-{
-	g_print("drag-drop %d,%d\n", x, y);
-
-	return FALSE;
-}
-
 static void method_callback(DBusGProxy *proxy,
 				DBusGProxyCall *call, void *user_data)
 {
@@ -211,19 +179,70 @@ static void method_callback(DBusGProxy *proxy,
 	g_object_unref(proxy);
 }
 
-static void method_call(DBusGProxy *proxy, const char *method)
+static void method_call(DBusGProxy *proxy, const char *method, const char *path)
 {
 	if (proxy == NULL)
 		return;
 
-	g_print("%s <== %s\n", method, dbus_g_proxy_get_path(proxy));
+	g_print("%s %s <== %s\n", method, path, dbus_g_proxy_get_path(proxy));
 
-	if (dbus_g_proxy_begin_call(proxy, method, method_callback,
+	if (path == NULL) {
+		if (dbus_g_proxy_begin_call(proxy, method, method_callback,
 					NULL, NULL, G_TYPE_INVALID) == FALSE) {
-		g_print("Can't call method %s\n", method);
-		g_object_unref(proxy);
-		return;
+			g_print("Can't call method %s\n", method);
+			g_object_unref(proxy);
+			return;
+		}
+	} else {
+		if (dbus_g_proxy_begin_call(proxy, method, method_callback,
+				NULL, NULL, DBUS_TYPE_G_OBJECT_PATH, path,
+						G_TYPE_INVALID) == FALSE) {
+			g_print("Can't call method %s (%s)\n", method, path);
+			g_object_unref(proxy);
+			return;
+		}
 	}
+}
+
+static void drag_data_get(GtkWidget *widget, GdkDragContext *context,
+				GtkSelectionData *data, guint info,
+					guint time, gpointer user_data)
+{
+	g_print("drag-data-get\n");
+}
+
+static void drag_data_received(GtkWidget *widget, GdkDragContext *context,
+				gint x, gint y, GtkSelectionData *data,
+				guint info, guint time, gpointer user_data)
+{
+	GtkTreeModel *model = user_data;
+	GtkTreePath *path;
+	GtkTreeIter iter;
+	DBusGProxy *proxy = NULL;
+
+	g_print("drag-data-received %d,%d\n", x, y);
+
+	if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(widget),
+				x, y, &path, NULL, NULL, NULL) == FALSE)
+		return;
+
+	if (gtk_tree_model_get_iter(model, &iter, path) == FALSE)
+		goto done;
+
+	gtk_tree_model_get(model, &iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
+
+	method_call(proxy, "MoveBefore", dbus_g_proxy_get_path(proxy));
+
+done:
+	gtk_tree_path_free(path);
+}
+
+static gboolean drag_drop(GtkWidget *widget, GdkDragContext *context,
+				gint x, gint y, guint time, gpointer user_data)
+{
+	g_print("drag-drop %d,%d\n", x, y);
+
+	return FALSE;
 }
 
 static DBusGProxy *get_proxy(GtkTreeSelection *selection)
@@ -244,21 +263,21 @@ static void connect_callback(GtkWidget *widget, gpointer user_data)
 {
 	DBusGProxy *proxy = get_proxy(user_data);
 
-	method_call(proxy, "Connect");
+	method_call(proxy, "Connect", NULL);
 }
 
 static void disconnect_callback(GtkWidget *widget, gpointer user_data)
 {
 	DBusGProxy *proxy = get_proxy(user_data);
 
-	method_call(proxy, "Disconnect");
+	method_call(proxy, "Disconnect", NULL);
 }
 
 static void remove_callback(GtkWidget *widget, gpointer user_data)
 {
 	DBusGProxy *proxy = get_proxy(user_data);
 
-	method_call(proxy, "Remove");
+	method_call(proxy, "Remove", NULL);
 }
 
 static void show_popup(GtkWidget *widget,
@@ -356,7 +375,7 @@ static void select_callback(GtkTreeSelection *selection, gpointer user_data)
 		gtk_tree_view_enable_model_drag_source(tree, GDK_BUTTON1_MASK,
 				row_targets, G_N_ELEMENTS(row_targets),
 							GDK_ACTION_MOVE);
-	gtk_tree_view_enable_model_drag_dest(tree,
+		gtk_tree_view_enable_model_drag_dest(tree,
 				row_targets, G_N_ELEMENTS(row_targets),
 							GDK_ACTION_MOVE);
 	} else {
@@ -430,7 +449,7 @@ static GtkWidget *create_tree(void)
 	g_signal_connect(G_OBJECT(tree), "drag-data-get",
 					G_CALLBACK(drag_data_get), selection);
 	g_signal_connect(G_OBJECT(tree), "drag-data-received",
-					G_CALLBACK(drag_data_received), NULL);
+					G_CALLBACK(drag_data_received), model);
 
 	return tree;
 }
