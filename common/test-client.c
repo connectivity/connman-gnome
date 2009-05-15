@@ -186,7 +186,7 @@ static void drag_data_received(GtkWidget *widget, GdkDragContext *context,
 	gtk_tree_path_free(path);
 }
 
-static gboolean drag_drop(GtkWidget *widget, GdkDragContext *drag_context,
+static gboolean drag_drop(GtkWidget *widget, GdkDragContext *context,
 				gint x, gint y, guint time, gpointer user_data)
 {
 	g_print("drag-drop %d,%d\n", x, y);
@@ -194,23 +194,68 @@ static gboolean drag_drop(GtkWidget *widget, GdkDragContext *drag_context,
 	return FALSE;
 }
 
+static void method_callback(DBusGProxy *proxy,
+				DBusGProxyCall *call, void *user_data)
+{
+	dbus_g_proxy_end_call(proxy, call, NULL, G_TYPE_INVALID);
+
+	g_print("finished\n");
+
+	g_object_unref(proxy);
+}
+
+static void method_call(DBusGProxy *proxy, const char *method)
+{
+	if (proxy == NULL)
+		return;
+
+	g_print("%s <== %s\n", method, dbus_g_proxy_get_path(proxy));
+
+	if (dbus_g_proxy_begin_call(proxy, method, method_callback,
+					NULL, NULL, G_TYPE_INVALID) == FALSE) {
+		g_print("Can't call method %s\n", method);
+		g_object_unref(proxy);
+		return;
+	}
+}
+
+static DBusGProxy *get_proxy(GtkTreeSelection *selection)
+{
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	DBusGProxy *proxy = NULL;
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter) == FALSE)
+		return NULL;
+
+	gtk_tree_model_get(model, &iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
+
+	return proxy;
+}
+
 static void connect_callback(GtkWidget *widget, gpointer user_data)
 {
-	g_print("connect\n");
+	DBusGProxy *proxy = get_proxy(user_data);
+
+	method_call(proxy, "Connect");
 }
 
 static void disconnect_callback(GtkWidget *widget, gpointer user_data)
 {
-	g_print("disconnect\n");
+	DBusGProxy *proxy = get_proxy(user_data);
+
+	method_call(proxy, "Disconnect");
 }
 
 static void remove_callback(GtkWidget *widget, gpointer user_data)
 {
-	g_print("remove\n");
+	DBusGProxy *proxy = get_proxy(user_data);
+
+	method_call(proxy, "Remove");
 }
 
 static void show_popup(GtkWidget *widget,
-				GdkEventButton *event, gpointer userdata)
+				GdkEventButton *event, gpointer user_data)
 {
 	GtkWidget *menu;
 	GtkWidget *item;
@@ -220,17 +265,17 @@ static void show_popup(GtkWidget *widget,
 	item = gtk_menu_item_new_with_label("Connect");
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
 	g_signal_connect(G_OBJECT(item), "activate",
-					G_CALLBACK(connect_callback), NULL);
+				G_CALLBACK(connect_callback), user_data);
 
 	item = gtk_menu_item_new_with_label("Disconnect");
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
 	g_signal_connect(G_OBJECT(item), "activate",
-					G_CALLBACK(disconnect_callback), NULL);
+				G_CALLBACK(disconnect_callback), user_data);
 
 	item = gtk_menu_item_new_with_label("Remove");
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
 	g_signal_connect(G_OBJECT(item), "activate",
-					G_CALLBACK(remove_callback), NULL);
+				G_CALLBACK(remove_callback), user_data);
 
 	gtk_widget_show_all(menu);
 
@@ -266,7 +311,7 @@ static gboolean button_pressed(GtkWidget *widget,
 
 	gtk_tree_path_free(path);
 
-	show_popup(widget, event, user_data);
+	show_popup(widget, event, selection);
 
 	return TRUE;
 }
@@ -280,7 +325,7 @@ static gboolean popup_callback(GtkWidget *widget, gpointer user_data)
 	if (gtk_tree_selection_count_selected_rows(selection) != 1)
 		return FALSE;
 
-	show_popup(widget, NULL, user_data);
+	show_popup(widget, NULL, selection);
 
 	return TRUE;
 }
