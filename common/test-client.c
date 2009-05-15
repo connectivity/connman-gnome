@@ -152,6 +152,9 @@ static void strength_to_value(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_TYPE, &type,
 					CONNMAN_COLUMN_STRENGTH, &strength, -1);
 
+	g_object_set(cell, "orientation", GTK_PROGRESS_RIGHT_TO_LEFT,
+			"text-xalign", 1.0, "xpad", 4, "ypad", 6, NULL);
+
 	if (type != CONNMAN_TYPE_ETHERNET && strength != 0) {
 		g_object_set(cell, "value", strength, NULL);
 		g_object_set(cell, "visible", TRUE, NULL);
