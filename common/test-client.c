@@ -30,6 +30,14 @@
 
 static ConnmanClient *client;
 
+enum {
+	CONNMAN_SERVICE_MOVE = 0x1138,
+};
+
+static const GtkTargetEntry row_targets[] = {
+	{ "CONNMAN_SERVICE_MOVE", GTK_TARGET_SAME_WIDGET, CONNMAN_SERVICE_MOVE },
+};
+
 static const gchar *type2str(guint type)
 {
 	switch (type) {
@@ -184,7 +192,7 @@ static void method_call(DBusGProxy *proxy, const char *method, const char *path)
 	if (proxy == NULL)
 		return;
 
-	g_print("%s %s <== %s\n", method, path, dbus_g_proxy_get_path(proxy));
+	g_print("%s %s <== %s\n", method, dbus_g_proxy_get_path(proxy), path);
 
 	if (path == NULL) {
 		if (dbus_g_proxy_begin_call(proxy, method, method_callback,
@@ -204,47 +212,6 @@ static void method_call(DBusGProxy *proxy, const char *method, const char *path)
 	}
 }
 
-static void drag_data_get(GtkWidget *widget, GdkDragContext *context,
-				GtkSelectionData *data, guint info,
-					guint time, gpointer user_data)
-{
-	g_print("drag-data-get\n");
-}
-
-static void drag_data_received(GtkWidget *widget, GdkDragContext *context,
-				gint x, gint y, GtkSelectionData *data,
-				guint info, guint time, gpointer user_data)
-{
-	GtkTreeModel *model = user_data;
-	GtkTreePath *path;
-	GtkTreeIter iter;
-	DBusGProxy *proxy = NULL;
-
-	g_print("drag-data-received %d,%d\n", x, y);
-
-	if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(widget),
-				x, y, &path, NULL, NULL, NULL) == FALSE)
-		return;
-
-	if (gtk_tree_model_get_iter(model, &iter, path) == FALSE)
-		goto done;
-
-	gtk_tree_model_get(model, &iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
-
-	method_call(proxy, "MoveBefore", dbus_g_proxy_get_path(proxy));
-
-done:
-	gtk_tree_path_free(path);
-}
-
-static gboolean drag_drop(GtkWidget *widget, GdkDragContext *context,
-				gint x, gint y, guint time, gpointer user_data)
-{
-	g_print("drag-drop %d,%d\n", x, y);
-
-	return FALSE;
-}
-
 static DBusGProxy *get_proxy(GtkTreeSelection *selection)
 {
 	GtkTreeModel *model;
@@ -257,6 +224,83 @@ static DBusGProxy *get_proxy(GtkTreeSelection *selection)
 	gtk_tree_model_get(model, &iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
 
 	return proxy;
+}
+
+static void drag_data_get(GtkWidget *widget, GdkDragContext *context,
+				GtkSelectionData *data, guint info,
+					guint time, gpointer user_data)
+{
+	GtkTreeSelection *selection = user_data;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	GtkTreePath *path;
+
+	g_print("drag-data-get\n");
+
+	if (info != CONNMAN_SERVICE_MOVE)
+		return;
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter) == FALSE)
+		return;
+
+	path = gtk_tree_model_get_path(model, &iter);
+	if (path == NULL)
+		return;
+
+	data->data = (guchar *) gtk_tree_path_to_string(path);
+}
+
+static void drag_data_received(GtkWidget *widget, GdkDragContext *context,
+				gint x, gint y, GtkSelectionData *data,
+				guint info, guint time, gpointer user_data)
+{
+	GtkTreeModel *model = user_data;
+	GtkTreePath *path;
+	GtkTreeIter iter;
+	DBusGProxy *source, *proxy = NULL;
+	gboolean success = FALSE;
+
+	g_print("drag-data-received %d,%d\n", x, y);
+
+	if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(widget),
+				x, y, &path, NULL, NULL, NULL) == FALSE)
+		return;
+
+	if (gtk_tree_model_get_iter(model, &iter, path) == FALSE)
+		goto done;
+
+	gtk_tree_model_get(model, &iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
+
+	if (data == NULL || data->length == 0)
+		goto done;
+
+	if (info != CONNMAN_SERVICE_MOVE)
+		goto done;
+
+	if (gtk_tree_model_get_iter_from_string(model, &iter,
+						(gchar *) data->data) == FALSE)
+		goto done;
+
+	gtk_tree_model_get(model, &iter, CONNMAN_COLUMN_PROXY, &source, -1);
+
+	method_call(source, "MoveBefore", dbus_g_proxy_get_path(proxy));
+
+	g_object_unref(proxy);
+
+	success = TRUE;
+
+done:
+	gtk_tree_path_free(path);
+
+	gtk_drag_finish(context, success, FALSE, time);
+}
+
+static gboolean drag_drop(GtkWidget *widget, GdkDragContext *context,
+				gint x, gint y, guint time, gpointer user_data)
+{
+	g_print("drag-drop %d,%d\n", x, y);
+
+	return FALSE;
 }
 
 static void connect_callback(GtkWidget *widget, gpointer user_data)
@@ -362,9 +406,6 @@ static void select_callback(GtkTreeSelection *selection, gpointer user_data)
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	gboolean selected, favorite = FALSE;
-	const GtkTargetEntry row_targets[] = {
-		{ "resorting", GTK_TARGET_SAME_WIDGET, 0 }
-	};
 
 	selected = gtk_tree_selection_get_selected(selection, &model, &iter);
 	if (selected == TRUE)
