@@ -198,9 +198,15 @@ static gboolean drag_drop(GtkWidget *widget, GdkDragContext *context,
 static void method_callback(DBusGProxy *proxy,
 				DBusGProxyCall *call, void *user_data)
 {
-	dbus_g_proxy_end_call(proxy, call, NULL, G_TYPE_INVALID);
+	GError *error = NULL;
 
-	g_print("finished\n");
+	dbus_g_proxy_end_call(proxy, call, &error, G_TYPE_INVALID);
+
+	if (error != NULL) {
+		g_print("error %s\n", error->message);
+		g_error_free(error);
+	} else
+		g_print("finished\n");
 
 	g_object_unref(proxy);
 }
