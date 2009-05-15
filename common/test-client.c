@@ -92,8 +92,8 @@ static void service_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 	gchar *name;
 	guint type, state, security;
 	gboolean favorite;
-	gchar *markup;
-	const gchar *format, *str, *val;
+	gchar *markup, *str;
+	const gchar *format, *val;
 
 	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_NAME, &name,
 					CONNMAN_COLUMN_TYPE, &type,
@@ -109,11 +109,11 @@ static void service_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 
 	if (name == NULL) {
 		if (type == CONNMAN_TYPE_WIFI)
-			str = "<i>hidden</i>";
+			str = g_strdup("<i>hidden</i>");
 		else
-			str = type2str(type);
+			str = g_strdup(type2str(type));
 	} else
-		str = name;
+		str = g_markup_printf_escaped("%s", name);
 
 	if (state == CONNMAN_STATE_UNKNOWN || state == CONNMAN_STATE_IDLE)
 		val = NULL;
@@ -125,6 +125,7 @@ static void service_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 						security2str(security));
 	g_object_set(cell, "markup", markup, NULL);
 	g_free(markup);
+	g_free(str);
 
 	g_free(name);
 }
