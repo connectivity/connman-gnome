@@ -74,7 +74,7 @@ static const gchar *security2str(guint security)
 	case CONNMAN_SECURITY_UNKNOWN:
 		return "Unknown";
 	case CONNMAN_SECURITY_NONE:
-		return "No";
+		return "None";
 	case CONNMAN_SECURITY_WEP:
 		return "WEP";
 	case CONNMAN_SECURITY_WPA:
@@ -103,9 +103,9 @@ static void service_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 
 	if (favorite == TRUE)
 		format = "<b>%s</b>\n"
-			"<span size=\"small\">%s service%s%s <i>(%s protection)</i></span>";
+			"<span size=\"small\">%s service%s%s <i>(%s)</i></span>";
 	else
-		format = "%s\n<span size=\"small\">%s service%s%s <i>(%s protection)</i></span>";
+		format = "%s\n<span size=\"small\">%s service%s%s <i>(%s)</i></span>";
 
 	if (name == NULL) {
 		if (type == CONNMAN_TYPE_WIFI)
