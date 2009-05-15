@@ -90,20 +90,22 @@ static void service_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
 	gchar *name;
-	guint type;
+	guint type, state, security;
 	gboolean favorite;
 	gchar *markup;
-	const gchar *format, *str;
+	const gchar *format, *str, *val;
 
 	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_NAME, &name,
 					CONNMAN_COLUMN_TYPE, &type,
-					CONNMAN_COLUMN_FAVORITE, &favorite, -1);
+					CONNMAN_COLUMN_STATE, &state,
+					CONNMAN_COLUMN_FAVORITE, &favorite,
+					CONNMAN_COLUMN_SECURITY, &security, -1);
 
 	if (favorite == TRUE)
 		format = "<b>%s</b>\n"
-				"<span size=\"small\">%s service</span>";
+			"<span size=\"small\">%s service%s%s <i>(%s protection)</i></span>";
 	else
-		format = "%s\n<span size=\"small\">%s service</span>";
+		format = "%s\n<span size=\"small\">%s service%s%s <i>(%s protection)</i></span>";
 
 	if (name == NULL) {
 		if (type == CONNMAN_TYPE_WIFI)
@@ -113,38 +115,48 @@ static void service_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 	} else
 		str = name;
 
-	markup = g_strdup_printf(format, str, type2str(type));
+	if (state == CONNMAN_STATE_UNKNOWN || state == CONNMAN_STATE_IDLE)
+		val = NULL;
+	else
+		val = state2str(state);
+
+	markup = g_strdup_printf(format, str, type2str(type),
+					val ? " - " : "", val ? val : "",
+						security2str(security));
 	g_object_set(cell, "markup", markup, NULL);
 	g_free(markup);
 
 	g_free(name);
 }
 
-static void status_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
+static void security_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
-	guint state, strength, security;
-	gboolean favorite;
-	gchar *markup;
-	const gchar *format;
+	guint security;
 
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_STATE, &state,
-					CONNMAN_COLUMN_FAVORITE, &favorite,
-					CONNMAN_COLUMN_STRENGTH, &strength,
-					CONNMAN_COLUMN_FAVORITE, &favorite,
-					CONNMAN_COLUMN_SECURITY, &security, -1);
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_SECURITY, &security, -1);
 
-	if (favorite == TRUE)
-		format = "<b>%s</b>\n"
-			"<span size=\"small\">%d%% - %s protection</span>";
+	if (security == CONNMAN_SECURITY_UNKNOWN ||
+					security == CONNMAN_SECURITY_NONE)
+		g_object_set(cell, "icon-name", NULL, NULL);
 	else
-		format = "%s\n<span size=\"small\">%d%% - %s protection</span>";
+		g_object_set(cell, "icon-name",
+					GTK_STOCK_DIALOG_AUTHENTICATION, NULL);
+}
 
-	markup = g_strdup_printf(format,
-			state == CONNMAN_STATE_UNKNOWN ? "" : state2str(state),
-					strength, security2str(security));
-	g_object_set(cell, "markup", markup, NULL);
-	g_free(markup);
+static void strength_to_value(GtkTreeViewColumn *column, GtkCellRenderer *cell,
+			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
+{
+	guint type, strength;
+
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_TYPE, &type,
+					CONNMAN_COLUMN_STRENGTH, &strength, -1);
+
+	if (type != CONNMAN_TYPE_ETHERNET && strength != 0) {
+		g_object_set(cell, "value", strength, NULL);
+		g_object_set(cell, "visible", TRUE, NULL);
+	} else
+		g_object_set(cell, "visible", FALSE, NULL);
 }
 
 static void drag_data_get(GtkWidget *widget, GdkDragContext *context,
@@ -308,13 +320,12 @@ static GtkWidget *create_tree(void)
 
 	tree = gtk_tree_view_new();
 	gtk_tree_view_set_show_expanders(GTK_TREE_VIEW(tree), FALSE);
-	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(tree), TRUE);
+	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(tree), FALSE);
 	gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(tree), TRUE);
 	gtk_tree_view_set_grid_lines(GTK_TREE_VIEW(tree),
 					GTK_TREE_VIEW_GRID_LINES_NONE);
 
 	column = gtk_tree_view_column_new();
-	gtk_tree_view_column_set_title(column, "Service");
 	gtk_tree_view_column_set_expand(column, TRUE);
 	gtk_tree_view_column_set_spacing(column, 6);
 	gtk_tree_view_column_set_min_width(column, 250);
@@ -326,13 +337,20 @@ static GtkWidget *create_tree(void)
 					"icon-name", CONNMAN_COLUMN_ICON);
 
 	renderer = gtk_cell_renderer_text_new();
-	gtk_tree_view_column_pack_end(column, renderer, TRUE);
+	gtk_tree_view_column_pack_start(column, renderer, TRUE);
 	gtk_tree_view_column_set_cell_data_func(column, renderer,
 					service_to_text, NULL, NULL);
 
-	gtk_tree_view_insert_column_with_data_func(GTK_TREE_VIEW(tree), -1,
-				"Status", gtk_cell_renderer_text_new(),
-						status_to_text, NULL, NULL);
+	renderer = gtk_cell_renderer_pixbuf_new();
+	gtk_tree_view_column_pack_start(column, renderer, FALSE);
+	gtk_tree_view_column_set_cell_data_func(column, renderer,
+					security_to_icon, NULL, NULL);
+
+	renderer = gtk_cell_renderer_progress_new();
+	gtk_cell_renderer_set_fixed_size(renderer, 100, -1);
+	gtk_tree_view_column_pack_start(column, renderer, FALSE);
+	gtk_tree_view_column_set_cell_data_func(column, renderer,
+					strength_to_value, NULL, NULL);
 
 	model = connman_client_get_model(client);
 	gtk_tree_view_set_model(GTK_TREE_VIEW(tree), model);
