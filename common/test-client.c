@@ -179,7 +179,7 @@ static void method_callback(DBusGProxy *proxy,
 	dbus_g_proxy_end_call(proxy, call, &error, G_TYPE_INVALID);
 
 	if (error != NULL) {
-		g_print("error %s\n", error->message);
+		g_print("error - %s\n", error->message);
 		g_error_free(error);
 	} else
 		g_print("finished\n");
@@ -192,7 +192,7 @@ static void method_call(DBusGProxy *proxy, const char *method, const char *path)
 	if (proxy == NULL)
 		return;
 
-	g_print("%s %s <== %s\n", method, dbus_g_proxy_get_path(proxy), path);
+	g_print("%s ( %s, %s )\n", method, dbus_g_proxy_get_path(proxy), path);
 
 	if (path == NULL) {
 		if (dbus_g_proxy_begin_call(proxy, method, method_callback,
@@ -235,8 +235,6 @@ static void drag_data_get(GtkWidget *widget, GdkDragContext *context,
 	GtkTreeIter iter;
 	GtkTreePath *path;
 
-	g_print("drag-data-get\n");
-
 	if (info != CONNMAN_SERVICE_MOVE)
 		return;
 
@@ -259,8 +257,6 @@ static void drag_data_received(GtkWidget *widget, GdkDragContext *context,
 	GtkTreeIter iter;
 	DBusGProxy *source, *proxy = NULL;
 	gboolean success = FALSE;
-
-	g_print("drag-data-received %d,%d\n", x, y);
 
 	if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(widget),
 				x, y, &path, NULL, NULL, NULL) == FALSE)
@@ -298,8 +294,6 @@ done:
 static gboolean drag_drop(GtkWidget *widget, GdkDragContext *context,
 				gint x, gint y, guint time, gpointer user_data)
 {
-	g_print("drag-drop %d,%d\n", x, y);
-
 	return FALSE;
 }
 
