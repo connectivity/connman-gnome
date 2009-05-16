@@ -30,7 +30,6 @@
 
 #include "status.h"
 
-#if 0
 static ConnmanClient *client;
 
 static void open_uri(GtkWindow *parent, const char *uri)
@@ -99,6 +98,7 @@ static void settings_callback(GtkWidget *item, gpointer user_data)
 		g_printerr("Couldn't execute command: %s\n", command);
 }
 
+#if 0
 static void toggled_callback(GtkWidget *button, gpointer user_data)
 {
 	GtkWidget *entry = user_data;
@@ -185,39 +185,7 @@ static void passphrase_dialog(const char *path, const char *name)
 
 	gtk_widget_destroy(dialog);
 }
-
-static void activate_callback(GtkWidget *item, gpointer user_data)
-{
-	const gchar *path = user_data;
-	guint security;
-	gchar *passphrase;
-
-	security = connman_client_get_security(client, path);
-	if (security == CONNMAN_SECURITY_UNKNOWN)
-		return;
-
-	if (security == CONNMAN_SECURITY_NONE) {
-		status_prepare();
-		connman_client_connect(client, path);
-		return;
-	}
-
-	passphrase = connman_client_get_passphrase(client, path);
-	if (passphrase != NULL) {
-		g_free(passphrase);
-
-		status_prepare();
-		connman_client_connect(client, path);
-		return;
-	}
-
-	passphrase_dialog(path, NULL);
-}
-
-static void disconnect_callback(GtkWidget *item, gpointer user_data)
-{
-	connman_client_disconnect(client, NULL);
-}
+#endif
 
 static GtkWidget *create_popupmenu(void)
 {
@@ -228,7 +196,7 @@ static GtkWidget *create_popupmenu(void)
 
 	item = gtk_image_menu_item_new_from_stock(GTK_STOCK_PREFERENCES, NULL);
 	g_signal_connect(item, "activate", G_CALLBACK(settings_callback), NULL);
-	gtk_widget_show(item);
+	//gtk_widget_show(item);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
 
 	item = gtk_image_menu_item_new_from_stock(GTK_STOCK_ABOUT, NULL);
@@ -239,166 +207,27 @@ static GtkWidget *create_popupmenu(void)
 	return menu;
 }
 
-static GtkWidget *append_menuitem(GtkMenu *menu, const char *ssid,
-					guint security, guint strength)
-{
-	GtkWidget *item;
-	GtkWidget *hbox;
-	GtkWidget *label;
-	GtkWidget *image;
-	GtkWidget *progress;
-
-	item = gtk_check_menu_item_new();
-	gtk_check_menu_item_set_draw_as_radio(GTK_CHECK_MENU_ITEM(item), TRUE);
-
-	hbox = gtk_hbox_new(FALSE, 6);
-	gtk_container_add(GTK_CONTAINER(item), hbox);
-	gtk_widget_show(hbox);
-
-	label = gtk_label_new(NULL);
-	gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
-	gtk_label_set_text(GTK_LABEL(label), ssid);
-	gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, TRUE, 0);
-	gtk_widget_show(label);
-
-	image = gtk_image_new_from_stock(GTK_STOCK_DIALOG_AUTHENTICATION,
-							GTK_ICON_SIZE_MENU);
-	gtk_misc_set_alignment(GTK_MISC(image), 1.0, 0.5);
-	if (security != CONNMAN_SECURITY_NONE) {
-		gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
-		gtk_widget_show(image);
-	}
-
-	progress = gtk_progress_bar_new();
-	gtk_widget_set_size_request(progress, 100, -1);
-	gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress),
-						(double) strength / 100);
-	gtk_box_pack_end(GTK_BOX(hbox), progress, FALSE, TRUE, 0);
-	gtk_widget_show(progress);
-
-	gtk_widget_show(item);
-	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-
-	return item;
-}
-
-static void enumerate_networks(GtkMenu *menu,
-				GtkTreeModel *model, GtkTreeIter *parent)
-{
-	GtkTreeIter iter;
-	gboolean cont;
-
-	cont = gtk_tree_model_iter_children(model, &iter, parent);
-
-	while (cont == TRUE) {
-		GtkWidget *item;
-		DBusGProxy *proxy;
-		guint strength, security;
-		gchar *name, *path;
-		gboolean inrange, connected;
-
-		gtk_tree_model_get(model, &iter,
-				CONNMAN_COLUMN_PROXY, &proxy,
-				CONNMAN_COLUMN_NAME, &name,
-				CONNMAN_COLUMN_INRANGE, &inrange,
-				CONNMAN_COLUMN_ENABLED, &connected,
-				CONNMAN_COLUMN_STRENGTH, &strength,
-				CONNMAN_COLUMN_SECURITY, &security, -1);
-
-		if (connected == TRUE || inrange == TRUE) {
-			item = append_menuitem(menu, name, security, strength);
-			gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item),
-								connected);
-
-			path = g_strdup(dbus_g_proxy_get_path(proxy));
-			g_signal_connect(item, "activate",
-					G_CALLBACK(activate_callback), path);
-		}
-
-		g_free(name);
-
-		cont = gtk_tree_model_iter_next(model, &iter);
-	}
-}
-
-static gboolean menu_callback(GtkMenu *menu)
-{
-	GtkTreeModel *model;
-	GtkTreeIter parent;
-	GtkWidget *item;
-	gboolean cont;
-
-	connman_client_propose_scan(client, NULL);
-
-	model = connman_client_get_device_network_model(client);
-
-	cont = gtk_tree_model_get_iter_first(model, &parent);
-
-	while (cont == TRUE) {
-		guint type;
-		gchar *name;
-
-		gtk_tree_model_get(model, &parent,
-					CONNMAN_COLUMN_TYPE, &type,
-					CONNMAN_COLUMN_NAME, &name, -1);
-
-		switch (type) {
-		case CONNMAN_TYPE_WIFI:
-		case CONNMAN_TYPE_WIMAX:
-			enumerate_networks(menu, model, &parent);
-			break;
-		default:
-			break;
-		}
-
-		g_free(name);
-
-		cont = gtk_tree_model_iter_next(model, &parent);
-	}
-
-	g_object_unref(model);
-
-	item = gtk_separator_menu_item_new();
-	gtk_widget_show(item);
-	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-
-	item = gtk_menu_item_new_with_label(_("Disconnect Network"));
-	g_signal_connect(item, "activate",
-				G_CALLBACK(disconnect_callback), NULL);
-	gtk_widget_show(item);
-	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-
-	item = gtk_menu_item_new_with_label(_("Join Other Network..."));
-	gtk_widget_set_sensitive(item, FALSE);
-	//g_signal_connect(item, "activate",
-	//			G_CALLBACK(join_callback), NULL);
-	gtk_widget_show(item);
-	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-
-	return TRUE;
-}
-
 static void update_status(GtkTreeModel *model)
 {
 	GtkTreeIter iter;
 	gboolean cont;
 	gboolean online = FALSE;
-	guint strength, type;
+	guint type, strength;
 
 	cont = gtk_tree_model_get_iter_first(model, &iter);
 
 	while (cont == TRUE) {
-		gboolean enabled;
+		guint state;
 
 		gtk_tree_model_get(model, &iter,
-					CONNMAN_COLUMN_TYPE, &type,
-					CONNMAN_COLUMN_STRENGTH, &strength,
-					CONNMAN_COLUMN_ENABLED, &enabled, -1);
+				CONNMAN_COLUMN_TYPE, &type,
+				CONNMAN_COLUMN_STATE, &state,
+				CONNMAN_COLUMN_STRENGTH, &strength, -1);
 
-		online = TRUE;
-
-		if (enabled == TRUE)
+		if (state == CONNMAN_STATE_READY) {
+			online = TRUE;
 			break;
+		}
 
 		cont = gtk_tree_model_iter_next(model, &iter);
 	}
@@ -440,11 +269,9 @@ static void status_callback(const char *status, void *user_data)
 	else if (g_str_equal(status, "connecting") == TRUE)
 		status_config();
 }
-#endif
 
 int main(int argc, char *argv[])
 {
-#if 0
 	GtkTreeModel *model;
 
 	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
@@ -456,7 +283,7 @@ int main(int argc, char *argv[])
 
 	g_set_application_name(_("Connection Manager"));
 
-	status_init(menu_callback, create_popupmenu());
+	status_init(NULL, create_popupmenu());
 
 	client = connman_client_new();
 	model = connman_client_get_connection_model(client);
@@ -478,7 +305,6 @@ int main(int argc, char *argv[])
 	g_object_unref(client);
 
 	status_cleanup();
-#endif
 
 	return 0;
 }

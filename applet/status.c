@@ -216,7 +216,8 @@ int status_init(StatusCallback activate, GtkWidget *popup)
 	pixbuf_wired = pixbuf_load(icontheme, "connman-type-wired");
 	pixbuf_notifier = pixbuf_load(icontheme, "connman-notifier-unavailable");
 
-	g_signal_connect(statusicon, "activate",
+	if (activate != NULL)
+		g_signal_connect(statusicon, "activate",
 				G_CALLBACK(activate_callback), activate);
 
 	g_signal_connect(statusicon, "popup-menu",
