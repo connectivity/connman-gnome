@@ -54,6 +54,7 @@ GType connman_client_get_type(void);
 ConnmanClient *connman_client_new(void);
 
 GtkTreeModel *connman_client_get_model(ConnmanClient *client);
+GtkTreeModel *connman_client_get_connection_model(ConnmanClient *client);
 
 void connman_client_set_policy(ConnmanClient *client, const gchar *device,
 							const gchar *policy);

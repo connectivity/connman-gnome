@@ -210,6 +210,11 @@ GtkTreeModel *connman_client_get_model(ConnmanClient *client)
 	return model;
 }
 
+GtkTreeModel *connman_client_get_connection_model(ConnmanClient *client)
+{
+	return connman_client_get_model(client);
+}
+
 void connman_client_set_policy(ConnmanClient *client, const gchar *device,
 							const gchar *policy)
 {
