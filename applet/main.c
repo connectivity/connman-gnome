@@ -211,7 +211,7 @@ static void update_status(GtkTreeModel *model)
 {
 	GtkTreeIter iter;
 	gboolean cont;
-	gboolean online = FALSE;
+	gboolean prepare = FALSE, config = FALSE, online = FALSE;
 	guint type, strength;
 
 	cont = gtk_tree_model_get_iter_first(model, &iter);
@@ -229,7 +229,23 @@ static void update_status(GtkTreeModel *model)
 			break;
 		}
 
+		if (state == CONNMAN_STATE_ASSOCIATION)
+			prepare = TRUE;
+
+		if (state == CONNMAN_STATE_CONFIGURATION)
+			config = TRUE;
+
 		cont = gtk_tree_model_iter_next(model, &iter);
+	}
+
+	if (config == TRUE) {
+		status_config();
+		return;
+	}
+
+	if (prepare == TRUE) {
+		status_prepare();
+		return;
 	}
 
 	if (online == FALSE) {
