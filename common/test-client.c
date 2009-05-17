@@ -87,8 +87,8 @@ static const gchar *security2str(guint security)
 		return "WEP";
 	case CONNMAN_SECURITY_WPA:
 		return "WPA";
-	case CONNMAN_SECURITY_WPA2:
-		return "WPA2";
+	case CONNMAN_SECURITY_RSN:
+		return "RSN";
 	}
 
 	return NULL;
@@ -195,8 +195,9 @@ static void method_call(DBusGProxy *proxy, const char *method, const char *path)
 	g_print("%s ( %s, %s )\n", method, dbus_g_proxy_get_path(proxy), path);
 
 	if (path == NULL) {
-		if (dbus_g_proxy_begin_call(proxy, method, method_callback,
-					NULL, NULL, G_TYPE_INVALID) == FALSE) {
+		if (dbus_g_proxy_begin_call_with_timeout(proxy,
+					method, method_callback, NULL, NULL,
+					120 * 1000, G_TYPE_INVALID) == FALSE) {
 			g_print("Can't call method %s\n", method);
 			g_object_unref(proxy);
 			return;
@@ -277,9 +278,11 @@ static void drag_data_received(GtkWidget *widget, GdkDragContext *context,
 						(gchar *) data->data) == FALSE)
 		goto done;
 
+	g_print("%s -> %s\n", (gchar *) data->data, gtk_tree_path_to_string(path));
+
 	gtk_tree_model_get(model, &iter, CONNMAN_COLUMN_PROXY, &source, -1);
 
-	method_call(source, "MoveBefore", dbus_g_proxy_get_path(proxy));
+	//method_call(source, "MoveBefore", dbus_g_proxy_get_path(proxy));
 
 	g_object_unref(proxy);
 

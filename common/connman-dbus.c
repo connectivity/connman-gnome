@@ -224,8 +224,8 @@ static guint get_security(const GValue *value)
 		return CONNMAN_SECURITY_WEP;
 	else if (g_str_equal(security, "wpa") == TRUE)
 		return CONNMAN_SECURITY_WPA;
-	else if (g_str_equal(security, "wpa2") == TRUE)
-		return CONNMAN_SECURITY_WPA2;
+	else if (g_str_equal(security, "rsn") == TRUE)
+		return CONNMAN_SECURITY_RSN;
 
 	return CONNMAN_SECURITY_UNKNOWN;
 }
