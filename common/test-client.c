@@ -51,6 +51,8 @@ static const gchar *type2str(guint type)
 		return "WiMAX";
 	case CONNMAN_TYPE_BLUETOOTH:
 		return "Bluetooth";
+	case CONNMAN_TYPE_CELLULAR:
+		return "Cellular";
 	}
 
 	return NULL;

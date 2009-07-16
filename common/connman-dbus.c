@@ -173,6 +173,8 @@ static guint get_type(const GValue *value)
 		return CONNMAN_TYPE_WIMAX;
 	else if (g_str_equal(type, "bluetooth") == TRUE)
 		return CONNMAN_TYPE_BLUETOOTH;
+	else if (g_str_equal(type, "cellular") == TRUE)
+		return CONNMAN_TYPE_CELLULAR;
 
 	return CONNMAN_TYPE_UNKNOWN;
 }
