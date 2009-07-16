@@ -73,6 +73,8 @@ static const gchar *state2str(guint state)
 		return "Configuration";
 	case CONNMAN_STATE_READY:
 		return "Connected";
+	case CONNMAN_STATE_FAILURE:
+		return "Failure";
 	}
 
 	return NULL;

@@ -196,20 +196,22 @@ static const gchar *type2icon(guint type)
 
 static guint get_state(const GValue *value)
 {
-	const char *type = value ? g_value_get_string(value) : NULL;
+	const char *state = value ? g_value_get_string(value) : NULL;
 
-	if (type == NULL)
+	if (state == NULL)
 		return CONNMAN_STATE_UNKNOWN;
-	else if (g_str_equal(type, "idle") == TRUE)
+	else if (g_str_equal(state, "idle") == TRUE)
 		return CONNMAN_STATE_IDLE;
-	else if (g_str_equal(type, "carrier") == TRUE)
+	else if (g_str_equal(state, "carrier") == TRUE)
 		return CONNMAN_STATE_CARRIER;
-	else if (g_str_equal(type, "association") == TRUE)
+	else if (g_str_equal(state, "association") == TRUE)
 		return CONNMAN_STATE_ASSOCIATION;
-	else if (g_str_equal(type, "configuration") == TRUE)
+	else if (g_str_equal(state, "configuration") == TRUE)
 		return CONNMAN_STATE_CONFIGURATION;
-	else if (g_str_equal(type, "ready") == TRUE)
+	else if (g_str_equal(state, "ready") == TRUE)
 		return CONNMAN_STATE_READY;
+	else if (g_str_equal(state, "failure") == TRUE)
+		return CONNMAN_STATE_FAILURE;
 
 	return CONNMAN_STATE_UNKNOWN;
 }
