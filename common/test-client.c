@@ -286,7 +286,7 @@ static void drag_data_received(GtkWidget *widget, GdkDragContext *context,
 
 	gtk_tree_model_get(model, &iter, CONNMAN_COLUMN_PROXY, &source, -1);
 
-	//method_call(source, "MoveBefore", dbus_g_proxy_get_path(proxy));
+	method_call(source, "MoveBefore", dbus_g_proxy_get_path(proxy));
 
 	g_object_unref(proxy);
 
