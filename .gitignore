@@ -27,6 +27,7 @@ po/POTFILES
 po/stamp-it
 po/.intltool-merge-cache
 
+common/test-dbus
 common/test-client
 common/connman-demo
 applet/connman-applet
