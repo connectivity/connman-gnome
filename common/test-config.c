@@ -29,7 +29,7 @@
 #include "marshal.h"
 #include "marshal.c"
 
-static GtkWidget *label_systemstate;
+static GtkWidget *label_state;
 static GtkWidget *label_offlinemode;
 static GtkWidget *label_available;
 static GtkWidget *label_enabled;
@@ -43,7 +43,7 @@ static void property_changed(DBusGProxy *proxy, const char *property,
 		return;
 
 	if (g_str_equal(property, "State") == TRUE)
-		gtk_label_set_text(GTK_LABEL(label_systemstate),
+		gtk_label_set_text(GTK_LABEL(label_state),
 						g_value_get_string(value));
 
 	if (g_str_equal(property, "OfflineMode") == TRUE)
@@ -139,6 +139,27 @@ static void get_properties(DBusGProxy *proxy)
 	}
 }
 
+static DBusGProxy *manager;
+
+static void name_owner_changed(DBusGProxy *dbus, const char *name,
+			const char *prev, const char *new, gpointer user_data)
+{
+	if (g_str_equal(name, "org.moblin.connman") == FALSE)
+		return;
+
+	if (*new != '\0') {
+		get_properties(manager);
+		return;
+	}
+
+	gtk_label_set_text(GTK_LABEL(label_state), NULL);
+	gtk_label_set_text(GTK_LABEL(label_offlinemode), NULL);
+	gtk_label_set_text(GTK_LABEL(label_available), NULL);
+	gtk_label_set_text(GTK_LABEL(label_enabled), NULL);
+	gtk_label_set_text(GTK_LABEL(label_connected), NULL);
+	gtk_label_set_text(GTK_LABEL(label_default), NULL);
+}
+
 static gboolean delete_callback(GtkWidget *window, GdkEvent *event,
 							gpointer user_data)
 {
@@ -193,8 +214,8 @@ static GtkWidget *create_window(void)
 	gtk_box_pack_start(GTK_BOX(mainbox), hbox, FALSE, FALSE, 0);
 	label = gtk_label_new("System state:");
 	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-	label_systemstate = gtk_label_new(NULL);
-	gtk_box_pack_end(GTK_BOX(hbox), label_systemstate, FALSE, FALSE, 0);
+	label_state = gtk_label_new(NULL);
+	gtk_box_pack_end(GTK_BOX(hbox), label_state, FALSE, FALSE, 0);
 
 	hbox = gtk_hbox_new(FALSE, 6);
 	gtk_container_set_border_width(GTK_CONTAINER(mainbox), 24);
@@ -261,22 +282,36 @@ int main(int argc, char *argv[])
 		g_error_free(error);
 	}
 
-	proxy = dbus_g_proxy_new_for_name(connection, "org.moblin.connman",
+	proxy = dbus_g_proxy_new_for_name(connection, DBUS_SERVICE_DBUS,
+					DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);
+
+	manager = dbus_g_proxy_new_for_name(connection, "org.moblin.connman",
 					"/", "org.moblin.connman.Manager");
 
 	create_window();
 
-	dbus_g_proxy_add_signal(proxy, "PropertyChanged",
+	dbus_g_proxy_add_signal(proxy, "NameOwnerChanged",
+					G_TYPE_STRING, G_TYPE_STRING,
+					G_TYPE_STRING, G_TYPE_INVALID);
+	dbus_g_proxy_connect_signal(proxy, "NameOwnerChanged",
+				G_CALLBACK(name_owner_changed), NULL, NULL);
+
+	dbus_g_proxy_add_signal(manager, "PropertyChanged",
 				G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
-	dbus_g_proxy_connect_signal(proxy, "PropertyChanged",
+	dbus_g_proxy_connect_signal(manager, "PropertyChanged",
 				G_CALLBACK(property_changed), NULL, NULL);
 
-	get_properties(proxy);
+	get_properties(manager);
 
 	gtk_main();
 
-	dbus_g_proxy_disconnect_signal(proxy, "PropertyChanged",
+	dbus_g_proxy_disconnect_signal(manager, "PropertyChanged",
 					G_CALLBACK(property_changed), NULL);
+
+	dbus_g_proxy_disconnect_signal(proxy, "NameOwnerChanged",
+					G_CALLBACK(name_owner_changed), NULL);
+
+	g_object_unref(manager);
 
 	g_object_unref(proxy);
 
