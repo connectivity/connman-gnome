@@ -33,6 +33,7 @@ static GtkWidget *label_systemstate;
 static GtkWidget *label_offlinemode;
 static GtkWidget *label_available;
 static GtkWidget *label_enabled;
+static GtkWidget *label_connected;
 
 static void property_changed(DBusGProxy *proxy, const char *property,
 					GValue *value, gpointer user_data)
@@ -48,7 +49,7 @@ static void property_changed(DBusGProxy *proxy, const char *property,
 		gtk_label_set_text(GTK_LABEL(label_offlinemode),
 			g_value_get_boolean(value) == TRUE ? "yes" : "no");
 
-	if (g_str_equal(property, "Technologies") == TRUE) {
+	if (g_str_equal(property, "AvailableTechnologies") == TRUE) {
 		GString *text = g_string_sized_new(0);
 		gchar **list = g_value_get_boxed(value);
 		guint i;
@@ -69,6 +70,18 @@ static void property_changed(DBusGProxy *proxy, const char *property,
 			g_string_append_printf(text, "%s ", *(list + i));
 
 		gtk_label_set_text(GTK_LABEL(label_enabled),
+						g_string_free(text, FALSE));
+	}
+
+	if (g_str_equal(property, "ConnectedTechnologies") == TRUE) {
+		GString *text = g_string_sized_new(0);
+		gchar **list = g_value_get_boxed(value);
+		guint i;
+
+		for (i = 0; i < g_strv_length(list); i++)
+			g_string_append_printf(text, "%s ", *(list + i));
+
+		gtk_label_set_text(GTK_LABEL(label_connected),
 						g_string_free(text, FALSE));
 	}
 }
@@ -97,11 +110,14 @@ static void properties_callback(DBusGProxy *proxy,
 	value = g_hash_table_lookup(hash, "OfflineMode");
 	property_changed(proxy, "OfflineMode", value, user_data);
 
-	value = g_hash_table_lookup(hash, "Technologies");
-	property_changed(proxy, "Technologies", value, user_data);
+	value = g_hash_table_lookup(hash, "AvailableTechnologies");
+	property_changed(proxy, "AvailableTechnologies", value, user_data);
 
 	value = g_hash_table_lookup(hash, "EnabledTechnologies");
 	property_changed(proxy, "EnabledTechnologies", value, user_data);
+
+	value = g_hash_table_lookup(hash, "ConnectedTechnologies");
+	property_changed(proxy, "ConnectedTechnologies", value, user_data);
 }
 
 static void get_properties(DBusGProxy *proxy)
@@ -195,6 +211,14 @@ static GtkWidget *create_window(void)
 	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 	label_enabled = gtk_label_new(NULL);
 	gtk_box_pack_end(GTK_BOX(hbox), label_enabled, FALSE, FALSE, 0);
+
+	hbox = gtk_hbox_new(FALSE, 6);
+	gtk_container_set_border_width(GTK_CONTAINER(mainbox), 24);
+	gtk_box_pack_start(GTK_BOX(mainbox), hbox, FALSE, FALSE, 0);
+	label = gtk_label_new("Connected technologies:");
+	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+	label_connected = gtk_label_new(NULL);
+	gtk_box_pack_end(GTK_BOX(hbox), label_connected, FALSE, FALSE, 0);
 
 	gtk_widget_show_all(window);
 
