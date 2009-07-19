@@ -29,6 +29,7 @@ po/.intltool-merge-cache
 
 common/test-dbus
 common/test-client
+common/test-config
 common/connman-demo
 applet/connman-applet
 properties/connman-properties
