@@ -56,7 +56,7 @@ static void property_changed(DBusGProxy *proxy, const char *property,
 		guint i;
 
 		for (i = 0; i < g_strv_length(list); i++)
-			g_string_append_printf(text, "%s ", *(list + i));
+			g_string_append_printf(text, " %s", *(list + i));
 
 		gtk_label_set_text(GTK_LABEL(label_available),
 						g_string_free(text, FALSE));
@@ -68,7 +68,7 @@ static void property_changed(DBusGProxy *proxy, const char *property,
 		guint i;
 
 		for (i = 0; i < g_strv_length(list); i++)
-			g_string_append_printf(text, "%s ", *(list + i));
+			g_string_append_printf(text, " %s", *(list + i));
 
 		gtk_label_set_text(GTK_LABEL(label_enabled),
 						g_string_free(text, FALSE));
@@ -80,7 +80,7 @@ static void property_changed(DBusGProxy *proxy, const char *property,
 		guint i;
 
 		for (i = 0; i < g_strv_length(list); i++)
-			g_string_append_printf(text, "%s ", *(list + i));
+			g_string_append_printf(text, " %s", *(list + i));
 
 		gtk_label_set_text(GTK_LABEL(label_connected),
 						g_string_free(text, FALSE));
