@@ -34,6 +34,7 @@ static GtkWidget *label_offlinemode;
 static GtkWidget *label_available;
 static GtkWidget *label_enabled;
 static GtkWidget *label_connected;
+static GtkWidget *label_default;
 
 static void property_changed(DBusGProxy *proxy, const char *property,
 					GValue *value, gpointer user_data)
@@ -84,6 +85,10 @@ static void property_changed(DBusGProxy *proxy, const char *property,
 		gtk_label_set_text(GTK_LABEL(label_connected),
 						g_string_free(text, FALSE));
 	}
+
+	if (g_str_equal(property, "DefaultTechnology") == TRUE)
+		gtk_label_set_text(GTK_LABEL(label_default),
+						g_value_get_string(value));
 }
 
 static void properties_callback(DBusGProxy *proxy,
@@ -118,6 +123,9 @@ static void properties_callback(DBusGProxy *proxy,
 
 	value = g_hash_table_lookup(hash, "ConnectedTechnologies");
 	property_changed(proxy, "ConnectedTechnologies", value, user_data);
+
+	value = g_hash_table_lookup(hash, "DefaultTechnology");
+	property_changed(proxy, "DefaultTechnology", value, user_data);
 }
 
 static void get_properties(DBusGProxy *proxy)
@@ -219,6 +227,14 @@ static GtkWidget *create_window(void)
 	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 	label_connected = gtk_label_new(NULL);
 	gtk_box_pack_end(GTK_BOX(hbox), label_connected, FALSE, FALSE, 0);
+
+	hbox = gtk_hbox_new(FALSE, 6);
+	gtk_container_set_border_width(GTK_CONTAINER(mainbox), 24);
+	gtk_box_pack_start(GTK_BOX(mainbox), hbox, FALSE, FALSE, 0);
+	label = gtk_label_new("Default technology:");
+	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+	label_default = gtk_label_new(NULL);
+	gtk_box_pack_end(GTK_BOX(hbox), label_default, FALSE, FALSE, 0);
 
 	gtk_widget_show_all(window);
 
