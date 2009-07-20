@@ -134,7 +134,6 @@ static void get_properties(DBusGProxy *proxy)
 					properties_callback, NULL, NULL,
 					120 * 1000, G_TYPE_INVALID) == FALSE) {
 		g_printerr("Method call for retrieving properties failed\n");
-		g_object_unref(proxy);
 		return;
 	}
 }
