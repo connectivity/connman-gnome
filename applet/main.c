@@ -25,270 +25,128 @@
 
 #include <dbus/dbus-glib.h>
 #include <glib/gi18n.h>
+#include <gtk/gtk.h>
 
-#include "connman-client.h"
+#include "marshal.h"
+#include "marshal.c"
 
+#include "properties.h"
 #include "status.h"
 
-static ConnmanClient *client;
+static gboolean global_ready = FALSE;
+static gint global_strength = -1;
 
-static void open_uri(GtkWindow *parent, const char *uri)
+static void service_property_changed(DBusGProxy *proxy, const char *property,
+					GValue *value, gpointer user_data)
 {
-	GtkWidget *dialog;
-	GdkScreen *screen;
-	GError *error = NULL;
-	gchar *cmdline;
-
-	screen = gtk_window_get_screen(parent);
-
-	cmdline = g_strconcat("xdg-open ", uri, NULL);
-
-	if (gdk_spawn_command_line_on_screen(screen,
-						cmdline, &error) == FALSE) {
-		dialog = gtk_message_dialog_new(parent,
-			GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR,
-				GTK_BUTTONS_CLOSE, "%s", error->message);
-		gtk_dialog_run(GTK_DIALOG(dialog));
-		gtk_widget_destroy(dialog);
-		g_error_free(error);
-	}
-
-	g_free(cmdline);
-}
-
-static void about_url_hook(GtkAboutDialog *dialog,
-					const gchar *url, gpointer data)
-{
-	open_uri(GTK_WINDOW(dialog), url);
-}
-
-static void about_email_hook(GtkAboutDialog *dialog,
-					const gchar *email, gpointer data)
-{
-	gchar *uri;
-
-	uri = g_strconcat("mailto:", email, NULL);
-	open_uri(GTK_WINDOW(dialog), uri);
-	g_free(uri);
-}
-
-static void about_callback(GtkWidget *item, gpointer user_data)
-{
-	const gchar *authors[] = {
-		"Marcel Holtmann <marcel@holtmann.org>",
-		NULL
-	};
-
-	gtk_about_dialog_set_url_hook(about_url_hook, NULL, NULL);
-	gtk_about_dialog_set_email_hook(about_email_hook, NULL, NULL);
-
-	gtk_show_about_dialog(NULL, "version", VERSION,
-		"copyright", "Copyright \xc2\xa9 2008 Intel Corporation",
-		"comments", _("A connection manager for the GNOME desktop"),
-		"authors", authors,
-		"translator-credits", _("translator-credits"),
-		"logo-icon-name", "network-wireless", NULL);
-}
-
-static void settings_callback(GtkWidget *item, gpointer user_data)
-{
-	const char *command = "connman-properties";
-
-	if (g_spawn_command_line_async(command, NULL) == FALSE)
-		g_printerr("Couldn't execute command: %s\n", command);
-}
-
-#if 0
-static void toggled_callback(GtkWidget *button, gpointer user_data)
-{
-	GtkWidget *entry = user_data;
-	gboolean mode;
-
-	mode = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button));
-
-	gtk_entry_set_visibility(GTK_ENTRY(entry), mode);
-}
-
-static void passphrase_dialog(const char *path, const char *name)
-{
-	GtkWidget *dialog;
-	GtkWidget *button;
-	GtkWidget *image;
-	GtkWidget *label;
-	GtkWidget *entry;
-	GtkWidget *table;
-	GtkWidget *vbox;
-
-	dialog = gtk_dialog_new();
-	gtk_window_set_title(GTK_WINDOW(dialog), _("Enter passphrase"));
-	gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
-	gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER);
-	gtk_window_set_keep_above(GTK_WINDOW(dialog), TRUE);
-	gtk_window_set_urgency_hint(GTK_WINDOW(dialog), TRUE);
-	gtk_dialog_set_has_separator(GTK_DIALOG(dialog), FALSE);
-
-	button = gtk_dialog_add_button(GTK_DIALOG(dialog),
-				GTK_STOCK_CANCEL, GTK_RESPONSE_REJECT);
-	button = gtk_dialog_add_button(GTK_DIALOG(dialog),
-					GTK_STOCK_OK, GTK_RESPONSE_ACCEPT);
-	gtk_widget_grab_default(button);
-
-	table = gtk_table_new(5, 2, FALSE);
-	gtk_table_set_row_spacings(GTK_TABLE(table), 4);
-	gtk_table_set_col_spacings(GTK_TABLE(table), 20);
-	gtk_container_set_border_width(GTK_CONTAINER(table), 12);
-	gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), table);
-	image = gtk_image_new_from_icon_name(GTK_STOCK_DIALOG_AUTHENTICATION,
-							GTK_ICON_SIZE_DIALOG);
-	gtk_misc_set_alignment(GTK_MISC(image), 0.0, 0.0);
-	gtk_table_attach(GTK_TABLE(table), image, 0, 1, 0, 5,
-						GTK_SHRINK, GTK_FILL, 0, 0);
-	vbox = gtk_vbox_new(FALSE, 6);
-
-	label = gtk_label_new(_("Network requires input of a passphrase:"));
-	gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.0);
-	gtk_container_add(GTK_CONTAINER(vbox), label);
-	gtk_table_attach(GTK_TABLE(table), vbox, 1, 2, 0, 1,
-				GTK_EXPAND | GTK_FILL, GTK_SHRINK, 0, 0);
-
-	entry = gtk_entry_new();
-	gtk_entry_set_max_length(GTK_ENTRY(entry), 120);
-	gtk_entry_set_width_chars(GTK_ENTRY(entry), 20);
-	gtk_entry_set_visibility(GTK_ENTRY(entry), FALSE);
-	gtk_entry_set_activates_default(GTK_ENTRY(entry), TRUE);
-	gtk_container_add(GTK_CONTAINER(vbox), entry);
-
-	button = gtk_check_button_new_with_label(_("Show input"));
-	gtk_container_add(GTK_CONTAINER(vbox), button);
-
-	g_signal_connect(G_OBJECT(button), "toggled",
-				G_CALLBACK(toggled_callback), entry);
-
-	button = gtk_check_button_new_with_label(_("Remember network"));
-	gtk_container_add(GTK_CONTAINER(vbox), button);
-
-	gtk_widget_show_all(dialog);
-
-	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-		const gchar *passphrase;
-		gboolean remember;
-
-		passphrase = gtk_entry_get_text(GTK_ENTRY(entry));
-		remember = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button));
-
-		connman_client_set_passphrase(client, path, passphrase);
-		connman_client_set_remember(client, path, remember);
-
-		status_prepare();
-		connman_client_connect(client, path);
-	}
-
-	gtk_widget_destroy(dialog);
-}
-#endif
-
-static GtkWidget *create_popupmenu(void)
-{
-	GtkWidget *menu;
-	GtkWidget *item;
-
-	menu = gtk_menu_new();
-
-	item = gtk_image_menu_item_new_from_stock(GTK_STOCK_PREFERENCES, NULL);
-	g_signal_connect(item, "activate", G_CALLBACK(settings_callback), NULL);
-	//gtk_widget_show(item);
-	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-
-	item = gtk_image_menu_item_new_from_stock(GTK_STOCK_ABOUT, NULL);
-	g_signal_connect(item, "activate", G_CALLBACK(about_callback), NULL);
-	gtk_widget_show(item);
-	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-
-	return menu;
-}
-
-static void update_status(GtkTreeModel *model)
-{
-	GtkTreeIter iter;
-	gboolean cont;
-	gboolean prepare = FALSE, config = FALSE, online = FALSE;
-	guint type, strength;
-
-	cont = gtk_tree_model_get_iter_first(model, &iter);
-
-	while (cont == TRUE) {
-		guint state;
-
-		gtk_tree_model_get(model, &iter,
-				CONNMAN_COLUMN_TYPE, &type,
-				CONNMAN_COLUMN_STATE, &state,
-				CONNMAN_COLUMN_STRENGTH, &strength, -1);
-
-		if (state == CONNMAN_STATE_READY) {
-			online = TRUE;
-			break;
-		}
-
-		if (state == CONNMAN_STATE_ASSOCIATION)
-			prepare = TRUE;
-
-		if (state == CONNMAN_STATE_CONFIGURATION)
-			config = TRUE;
-
-		cont = gtk_tree_model_iter_next(model, &iter);
-	}
-
-	if (config == TRUE) {
-		status_config();
+	if (property == NULL || value == NULL)
 		return;
+
+	if (g_str_equal(property, "Type") == TRUE) {
+		const gchar *type = g_value_get_string(value);
+
+		if (g_strcmp0(type, "ethernet") == 0)
+			global_strength = -1;
+	} else if (g_str_equal(property, "State") == TRUE) {
+		const gchar *state = g_value_get_string(value);
+
+		if (g_strcmp0(state, "ready") == 0)
+			global_ready = TRUE;
+		else
+			global_ready = FALSE;
+	} else if (g_str_equal(property, "Strength") == TRUE) {
+		const guchar strength = g_value_get_uchar(value);
+
+		global_strength = strength;
 	}
 
-	if (prepare == TRUE) {
-		status_prepare();
-		return;
-	}
+	if (global_ready == TRUE)
+		status_ready(global_strength);
+	else
+		status_offline();
+}
 
-	if (online == FALSE) {
+static DBusGProxy *service = NULL;
+
+static void update_service(DBusGProxy *proxy, const char *path)
+{
+	if (path == NULL) {
 		status_offline();
 		return;
 	}
 
-	switch (type) {
-	case CONNMAN_TYPE_WIFI:
-	case CONNMAN_TYPE_WIMAX:
-		status_ready(strength / 25);
-		break;
-	default:
-		status_ready(-1);
-		break;
+	if (service != NULL) {
+		if (g_strcmp0(dbus_g_proxy_get_path(service), path) == 0)
+			return;
+
+		properties_destroy(service);
+	}
+
+	service = dbus_g_proxy_new_from_proxy(proxy,
+					"org.moblin.connman.Service", path);
+
+	properties_create(service, service_property_changed, NULL);
+}
+
+static void iterate_list(const GValue *value, gpointer user_data)
+{
+	gchar **path = user_data;
+
+	if (*path == NULL)
+		*path = g_value_dup_boxed(value);
+}
+
+static void manager_property_changed(DBusGProxy *proxy, const char *property,
+					GValue *value, gpointer user_data)
+{
+	if (property == NULL || value == NULL)
+		return;
+
+	if (g_str_equal(property, "Services") == TRUE) {
+		gchar *path = NULL;
+
+		dbus_g_type_collection_value_iterate(value,
+						iterate_list, &path);
+		update_service(proxy, path);
+		g_free(path);
 	}
 }
 
-static void connection_added(GtkTreeModel *model, GtkTreePath *path,
-					GtkTreeIter *iter, gpointer user_data)
+static DBusGProxy *manager = NULL;
+
+static void manager_init(DBusGConnection *connection)
 {
-	update_status(model);
+	manager = dbus_g_proxy_new_for_name(connection, "org.moblin.connman",
+					"/", "org.moblin.connman.Manager");
+
+	properties_create(manager, manager_property_changed, NULL);
 }
 
-static void connection_removed(GtkTreeModel *model, GtkTreePath *path,
-							gpointer user_data)
+static void manager_cleanup(void)
 {
-	update_status(model);
+	properties_destroy(manager);
 }
 
-static void status_callback(const char *status, void *user_data)
+static void name_owner_changed(DBusGProxy *proxy, const char *name,
+			const char *prev, const char *new, gpointer user_data)
 {
-	if (g_str_equal(status, "unavailable") == TRUE)
+	if (g_str_equal(name, "org.moblin.connman") == FALSE)
+		return;
+
+	if (*new != '\0') {
+		status_offline();
+		properties_enable(manager);
+	} else {
+		properties_disable(manager);
 		status_unavailable();
-	else if (g_str_equal(status, "offline") == TRUE)
-		status_offline();
-	else if (g_str_equal(status, "connecting") == TRUE)
-		status_config();
+	}
 }
 
 int main(int argc, char *argv[])
 {
-	GtkTreeModel *model;
+	DBusGConnection *connection;
+	DBusGProxy *proxy;
+	GError *error = NULL;
 
 	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
 	bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
@@ -299,28 +157,42 @@ int main(int argc, char *argv[])
 
 	g_set_application_name(_("Connection Manager"));
 
-	status_init(NULL, create_popupmenu());
+	dbus_g_object_register_marshaller(marshal_VOID__STRING_BOXED,
+						G_TYPE_NONE, G_TYPE_STRING,
+						G_TYPE_VALUE, G_TYPE_INVALID);
 
-	client = connman_client_new();
-	model = connman_client_get_connection_model(client);
+	connection = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
+	if (error != NULL) {
+		g_printerr("%s\n", error->message);
+		g_error_free(error);
+		return 1;
+	}
 
-	g_signal_connect(G_OBJECT(model), "row-inserted",
-					G_CALLBACK(connection_added), NULL);
-	g_signal_connect(G_OBJECT(model), "row-changed",
-					G_CALLBACK(connection_added), NULL);
-	g_signal_connect(G_OBJECT(model), "row-deleted",
-					G_CALLBACK(connection_removed), NULL);
+	status_init(NULL, NULL);
 
-	update_status(model);
+	proxy = dbus_g_proxy_new_for_name(connection, DBUS_SERVICE_DBUS,
+					DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);
 
-	connman_client_set_callback(client, status_callback, NULL);
+	dbus_g_proxy_add_signal(proxy, "NameOwnerChanged",
+					G_TYPE_STRING, G_TYPE_STRING,
+					G_TYPE_STRING, G_TYPE_INVALID);
+	dbus_g_proxy_connect_signal(proxy, "NameOwnerChanged",
+				G_CALLBACK(name_owner_changed), NULL, NULL);
+
+	manager_init(connection);
 
 	gtk_main();
 
-	g_object_unref(model);
-	g_object_unref(client);
+	manager_cleanup();
+
+	dbus_g_proxy_disconnect_signal(proxy, "NameOwnerChanged",
+					G_CALLBACK(name_owner_changed), NULL);
+
+	g_object_unref(proxy);
 
 	status_cleanup();
+
+	dbus_g_connection_unref(connection);
 
 	return 0;
 }
