@@ -1,5 +1,5 @@
 
-bin_PROGRAMS = connman-properties
+noinst_PROGRAMS = connman-properties
 
 connman_properties_SOURCES = main.c advanced.h advanced.c \
 						ethernet.c wifi.c
@@ -21,11 +21,11 @@ desktopdir = $(datadir)/applications
 
 desktop_in_files = connman-properties.desktop.in
 
-desktop_DATA = $(desktop_in_files:.desktop.in=.desktop)
+noinst_DATA = $(desktop_in_files:.desktop.in=.desktop)
 
 @INTLTOOL_DESKTOP_RULE@
 
-CLEANFILES = $(desktop_DATA)
+CLEANFILES = $(noinst_DATA)
 
 EXTRA_DIST = $(desktop_in_files)
 
