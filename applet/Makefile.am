@@ -29,7 +29,7 @@ autostart_DATA = $(autostart_in_files:.desktop.in=.desktop)
 
 CLEANFILES = $(autostart_DATA) $(BUILT_SOURCES)
 
-EXTRA_DIST = $(autostart_in_files)
+EXTRA_DIST = $(autostart_in_files) marshal.list
 
 MAINTAINERCLEANFILES = Makefile.in
 
