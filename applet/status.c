@@ -305,8 +305,10 @@ static void set_ready(gint signal)
 
 	if (signal == 0)
 		index = 0;
+	else if (signal < 95)
+		index = signal / 25;
 	else
-		index = 3;
+		index = 4;
 
 	gtk_status_icon_set_from_pixbuf(statusicon, pixbuf_signal[index]);
 	gtk_status_icon_set_tooltip(statusicon, NULL);
