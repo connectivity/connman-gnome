@@ -5,17 +5,6 @@ libcommon_a_SOURCES = connman-dbus.c connman-dbus.h \
 				connman-client.h connman-client.c \
 							instance.h instance.c
 
-noinst_PROGRAMS = connman-demo test-client test-config test-dbus
-
-connman_demo_SOURCES = demo.c
-connman_demo_LDADD = libcommon.a @GTK_LIBS@ @DBUS_LIBS@
-
-test_client_LDADD = libcommon.a @GTK_LIBS@ @DBUS_LIBS@
-
-test_config_LDADD = @GTK_LIBS@ @DBUS_LIBS@
-
-test_dbus_LDADD = @DBUS_LIBS@
-
 BUILT_SOURCES = marshal.h marshal.c \
 			connman-dbus-glue.h \
 				instance-glue.h
