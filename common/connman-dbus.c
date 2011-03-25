@@ -221,13 +221,12 @@ static void enabled_technologies_changed(GtkTreeStore *store, GValue *value)
 	gboolean ethernet_enabled_prev, ethernet_enabled = FALSE;
 	gboolean wifi_enabled_prev, wifi_enabled = FALSE;
 	gchar **tech = g_value_get_boxed (value);
-	gint i;
+	guint i;
 
 	if (value == NULL)
 		return;
 
-	for (i = 0; i < g_strv_length (tech); i++)
-	{
+	for (i = 0; i < g_strv_length(tech); i++) {
 		if (g_str_equal("ethernet", *(tech + i)))
 			ethernet_enabled = TRUE;
 		else if (g_str_equal ("wifi", *(tech + i)))
@@ -255,10 +254,9 @@ static void enabled_technologies_properties(GtkTreeStore *store, DBusGProxy *pro
 	gboolean ethernet_enabled = FALSE;
 	gboolean wifi_enabled = FALSE;
 	gchar **tech = g_value_get_boxed (value);
-	gint i;
+	guint i;
 
-	for (i = 0; i < g_strv_length (tech); i++)
-	{
+	for (i = 0; i < g_strv_length (tech); i++) {
 		if (g_str_equal("ethernet", *(tech + i)))
 			ethernet_enabled = TRUE;
 		else if (g_str_equal ("wifi", *(tech + i)))
@@ -392,7 +390,6 @@ static void property_update(GtkTreeStore *store, const GValue *value,
 	for (list = new_list; list; list = list->next) {
 		gchar *path = list->data;
 		DBusGProxy *proxy;
-		GtkTreeIter iter;
 
 		DBG("new path %s", path);
 
