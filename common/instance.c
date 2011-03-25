@@ -29,7 +29,7 @@
 
 #include "instance.h"
 
-#define CONNMAN_SERVICE    "org.moblin.connman"
+#define CONNMAN_SERVICE    "net.connman"
 #define CONNMAN_INSTANCE   CONNMAN_SERVICE ".Instance"
 
 static DBusGConnection *connection;

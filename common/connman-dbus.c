@@ -407,46 +407,20 @@ static void manager_changed(DBusGProxy *proxy, const char *property,
 	if (property == NULL || value == NULL)
 		return;
 
-	if (g_str_equal(property, "State") == TRUE) {
-		ConnmanClientCallback callback;
-		gpointer userdata;
-		gchar *state;
-
-		state = g_object_get_data(G_OBJECT(store), "State");
-		g_free(state);
-
-		state = g_value_dup_string(value);
-		g_object_set_data(G_OBJECT(store), "State", state);
-
-		callback = g_object_get_data(G_OBJECT(store), "callback");
-		userdata = g_object_get_data(G_OBJECT(store), "userdata");
-		if (callback)
-			callback(state, userdata);
-	} else if (g_str_equal(property, "Services") == TRUE) {
+	if (g_str_equal(property, "Services") == TRUE)
 		property_update(store, value, service_properties);
-	}
 }
 
 static void manager_properties(DBusGProxy *proxy, GHashTable *hash,
 					GError *error, gpointer user_data)
 {
 	GtkTreeStore *store = user_data;
-	ConnmanClientCallback callback;
 	GValue *value;
-	gchar *state;
 
 	DBG("store %p proxy %p hash %p", store, proxy, hash);
 
 	if (error != NULL || hash == NULL)
 		return;
-
-	value = g_hash_table_lookup(hash, "State");
-	state = value ? g_value_dup_string(value) : NULL;
-	g_object_set_data(G_OBJECT(store), "State", state);
-
-	callback = g_object_get_data(G_OBJECT(store), "callback");
-	if (callback)
-		callback(state, NULL);
 
 	value = g_hash_table_lookup(hash, "Services");
 	if (value != NULL)

@@ -22,7 +22,7 @@
 #include <dbus/dbus-glib.h>
 #include <gtk/gtk.h>
 
-#define CONNMAN_SERVICE			"org.moblin.connman"
+#define CONNMAN_SERVICE			"net.connman"
 
 #define CONNMAN_ERROR_INTERFACE		CONNMAN_SERVICE ".Error"
 #define CONNMAN_AGENT_INTERFACE		CONNMAN_SERVICE ".Agent"
@@ -32,9 +32,6 @@
 
 #define CONNMAN_PROFILE_INTERFACE	CONNMAN_SERVICE ".Profile"
 #define CONNMAN_SERVICE_INTERFACE	CONNMAN_SERVICE ".Service"
-#define CONNMAN_DEVICE_INTERFACE	CONNMAN_SERVICE ".Device"
-#define CONNMAN_NETWORK_INTERFACE	CONNMAN_SERVICE ".Network"
-#define CONNMAN_CONNECTION_INTERFACE	CONNMAN_SERVICE ".Connection"
 
 DBusGProxy *connman_dbus_create_manager(DBusGConnection *connection,
 							GtkTreeStore *store);

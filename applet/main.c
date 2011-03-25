@@ -83,7 +83,7 @@ static void update_service(DBusGProxy *proxy, const char *path)
 	}
 
 	service = dbus_g_proxy_new_from_proxy(proxy,
-					"org.moblin.connman.Service", path);
+					"net.connman.Service", path);
 
 	properties_create(service, service_property_changed, NULL);
 }
@@ -116,8 +116,8 @@ static DBusGProxy *manager = NULL;
 
 static void manager_init(DBusGConnection *connection)
 {
-	manager = dbus_g_proxy_new_for_name(connection, "org.moblin.connman",
-					"/", "org.moblin.connman.Manager");
+	manager = dbus_g_proxy_new_for_name(connection, "net.connman",
+					"/", "net.connman.Manager");
 
 	properties_create(manager, manager_property_changed, NULL);
 }
@@ -130,7 +130,7 @@ static void manager_cleanup(void)
 static void name_owner_changed(DBusGProxy *proxy, const char *name,
 			const char *prev, const char *new, gpointer user_data)
 {
-	if (g_str_equal(name, "org.moblin.connman") == FALSE)
+	if (g_str_equal(name, "net.connman") == FALSE)
 		return;
 
 	if (*new != '\0') {

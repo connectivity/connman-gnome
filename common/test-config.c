@@ -143,7 +143,7 @@ static DBusGProxy *manager;
 static void name_owner_changed(DBusGProxy *dbus, const char *name,
 			const char *prev, const char *new, gpointer user_data)
 {
-	if (g_str_equal(name, "org.moblin.connman") == FALSE)
+	if (g_str_equal(name, "net.connman") == FALSE)
 		return;
 
 	if (*new != '\0') {
@@ -284,8 +284,8 @@ int main(int argc, char *argv[])
 	proxy = dbus_g_proxy_new_for_name(connection, DBUS_SERVICE_DBUS,
 					DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);
 
-	manager = dbus_g_proxy_new_for_name(connection, "org.moblin.connman",
-					"/", "org.moblin.connman.Manager");
+	manager = dbus_g_proxy_new_for_name(connection, "net.connman",
+					"/", "net.connman.Manager");
 
 	create_window();
 

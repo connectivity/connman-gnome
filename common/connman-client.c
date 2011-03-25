@@ -274,7 +274,7 @@ static gboolean device_scan(GtkTreeModel *model, GtkTreePath *path,
 		return FALSE;
 
 	if (g_str_equal(dbus_g_proxy_get_interface(proxy),
-					CONNMAN_DEVICE_INTERFACE) == FALSE)
+					CONNMAN_SERVICE_INTERFACE) == FALSE)
 		return FALSE;
 
 	connman_propose_scan(proxy, NULL);
@@ -317,7 +317,7 @@ static gboolean network_disconnect(GtkTreeModel *model, GtkTreePath *path,
 		return FALSE;
 
 	if (g_str_equal(dbus_g_proxy_get_interface(proxy),
-					CONNMAN_NETWORK_INTERFACE) == FALSE)
+					CONNMAN_SERVICE_INTERFACE) == FALSE)
 		return FALSE;
 
 	connman_disconnect(proxy, NULL);

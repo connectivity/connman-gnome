@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
 <node name="/">
-  <interface name="org.moblin.connman.Instance">
+  <interface name="net.connman.Instance">
     <method name="Present">
     </method>
   </interface>

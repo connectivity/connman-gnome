@@ -78,7 +78,7 @@ static void get_properties(const char *path, const char *interface)
 {
 	DBusGProxy *proxy;
 
-	proxy = dbus_g_proxy_new_for_name(connection, "org.moblin.connman",
+	proxy = dbus_g_proxy_new_for_name(connection, "net.connman",
 							path, interface);
 
 	if (dbus_g_proxy_begin_call_with_timeout(proxy, "GetProperties",
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 		g_error_free(error);
 	}
 
-	get_properties("/", "org.moblin.connman.Manager");
+	get_properties("/", "net.connman.Manager");
 
 	g_main_loop_run(mainloop);
 
