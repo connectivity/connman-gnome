@@ -247,6 +247,40 @@ static void select_callback(GtkTreeSelection *selection, gpointer user_data)
 	gtk_widget_show(notebook);
 }
 
+static void device_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
+		GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
+{
+	guint type;
+	char *markup, *name, *state;
+	const char *title;
+
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_TYPE, &type,
+				CONNMAN_COLUMN_NAME, &name,
+				CONNMAN_COLUMN_STATE, &state,
+				-1);
+	switch (type) {
+	case CONNMAN_TYPE_ETHERNET:
+		title = N_("Ethernet");
+		break;
+	case CONNMAN_TYPE_WIFI:
+		title = N_("WIFI");
+		break;
+	case CONNMAN_TYPE_WIMAX:
+		title = N_("WiMAX");
+		break;
+	case CONNMAN_TYPE_BLUETOOTH:
+		title = N_("Bluetooth");
+		break;
+	default:
+		title = N_("Unknown");
+		break;
+	}
+
+	markup = g_strdup_printf("  %s\n", title);
+	g_object_set(cell, "markup", markup, NULL);
+	g_free(markup);
+}
+
 static void type_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
@@ -302,20 +336,25 @@ static GtkWidget *create_interfaces(GtkWidget *window)
 	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(tree), FALSE);
 	gtk_tree_view_set_show_expanders(GTK_TREE_VIEW(tree), FALSE);
 	gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(tree), TRUE);
-	gtk_widget_set_size_request(tree, 180, -1);
+	gtk_widget_set_size_request(tree, 220, -1);
 	gtk_container_add(GTK_CONTAINER(scrolled), tree);
 
 
 	column = gtk_tree_view_column_new();
 	gtk_tree_view_column_set_expand(column, TRUE);
 	gtk_tree_view_column_set_spacing(column, 4);
+	gtk_tree_view_column_set_alignment(column, 0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(tree), column);
 
 	renderer = gtk_cell_renderer_pixbuf_new();
-	gtk_tree_view_column_pack_end(column, renderer, FALSE);
+	gtk_tree_view_column_pack_start(column, renderer, FALSE);
 	gtk_tree_view_column_set_cell_data_func(column, renderer,
 						type_to_icon, NULL, NULL);
 
+	renderer = gtk_cell_renderer_text_new();
+	gtk_tree_view_column_pack_start(column, renderer, FALSE);
+	gtk_tree_view_column_set_cell_data_func(column, renderer,
+						device_to_text, NULL, NULL);
 
 	interface_notebook = gtk_notebook_new();
 	gtk_notebook_set_show_tabs(GTK_NOTEBOOK(interface_notebook), FALSE);
@@ -389,7 +428,7 @@ static GtkWidget *create_window(void)
 	widget = create_interfaces(window);
 	gtk_notebook_prepend_page(GTK_NOTEBOOK(notebook), widget, NULL);
 	gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook),
-						widget, _("Devices"));
+						widget, _("Services"));
 
 	gtk_widget_show_all(window);
 
