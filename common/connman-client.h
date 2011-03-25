@@ -54,6 +54,7 @@ GType connman_client_get_type(void);
 ConnmanClient *connman_client_new(void);
 
 GtkTreeModel *connman_client_get_model(ConnmanClient *client);
+GtkTreeModel *connman_client_get_device_model(ConnmanClient *client);
 GtkTreeModel *connman_client_get_connection_model(ConnmanClient *client);
 
 void connman_client_set_policy(ConnmanClient *client, const gchar *device,
@@ -88,6 +89,7 @@ enum {
 	CONNMAN_COLUMN_STRENGTH,	/* G_TYPE_UINT    */
 	CONNMAN_COLUMN_SECURITY,	/* G_TYPE_UINT    */
 	CONNMAN_COLUMN_PASSPHRASE,	/* G_TYPE_STRING  */
+	CONNMAN_COLUMN_ADDRESS,		/* G_TYPE_STRING  */
 	_CONNMAN_NUM_COLUMNS
 };
 

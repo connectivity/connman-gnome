@@ -118,7 +118,8 @@ static void connman_client_init(ConnmanClient *client)
 				G_TYPE_BOOLEAN,	/* favorite */
 				G_TYPE_UINT,	/* strength */
 				G_TYPE_UINT,	/* security */
-				G_TYPE_STRING);	/* passphrase */
+				G_TYPE_STRING,  /* passphrase */
+				G_TYPE_STRING); /* address */
 
 	gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(priv->store),
 						compare_index, NULL, NULL);
@@ -213,6 +214,43 @@ GtkTreeModel *connman_client_get_model(ConnmanClient *client)
 GtkTreeModel *connman_client_get_connection_model(ConnmanClient *client)
 {
 	return connman_client_get_model(client);
+}
+
+static gboolean device_filter(GtkTreeModel *model,
+		GtkTreeIter *iter, gpointer user_data)
+{
+	DBusGProxy *proxy;
+	gboolean active;
+	guint type;
+
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy,
+			CONNMAN_COLUMN_TYPE, &type,
+			-1);
+
+	if (proxy == NULL)
+		return FALSE;
+
+	active = g_str_equal(CONNMAN_SERVICE_INTERFACE,
+			dbus_g_proxy_get_interface(proxy));
+
+	g_object_unref(proxy);
+
+	return active;
+}
+
+GtkTreeModel *connman_client_get_device_model(ConnmanClient *client)
+{
+	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
+	GtkTreeModel *model;
+
+	DBG("client %p", client);
+
+	model = gtk_tree_model_filter_new(GTK_TREE_MODEL(priv->store), NULL);
+
+	gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(model),
+			device_filter, NULL, NULL);
+
+	return model;
 }
 
 void connman_client_set_policy(ConnmanClient *client, const gchar *device,
@@ -310,8 +348,13 @@ static gboolean network_disconnect(GtkTreeModel *model, GtkTreePath *path,
 					GtkTreeIter *iter, gpointer user_data)
 {
 	DBusGProxy *proxy;
+	char *name;
+	guint type;
 
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy,
+					CONNMAN_COLUMN_NAME, &name,
+					CONNMAN_COLUMN_TYPE, &type,
+					-1);
 
 	if (proxy == NULL)
 		return FALSE;
@@ -320,7 +363,8 @@ static gboolean network_disconnect(GtkTreeModel *model, GtkTreePath *path,
 					CONNMAN_SERVICE_INTERFACE) == FALSE)
 		return FALSE;
 
-	connman_disconnect(proxy, NULL);
+	if (type == CONNMAN_TYPE_WIFI)
+		connman_disconnect(proxy, NULL);
 
 	g_object_unref(proxy);
 

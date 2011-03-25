@@ -30,7 +30,6 @@
 
 #include "advanced.h"
 
-#if 0
 static ConnmanClient *client;
 static GtkWidget *interface_notebook;
 
@@ -140,10 +139,8 @@ static struct config_data *create_config(GtkTreeModel *model,
 	gtk_tree_model_get(model, iter,
 				CONNMAN_COLUMN_PROXY, &proxy,
 				CONNMAN_COLUMN_TYPE, &type,
-				CONNMAN_COLUMN_INRANGE, &inrange,
-				CONNMAN_COLUMN_NETWORK, &network,
 				CONNMAN_COLUMN_ADDRESS, &address,
-				CONNMAN_COLUMN_POLICY, &policy, -1);
+				-1);
 
 	data->device = g_strdup(dbus_g_proxy_get_path(proxy));
 	g_object_unref(proxy);
@@ -250,73 +247,6 @@ static void select_callback(GtkTreeSelection *selection, gpointer user_data)
 	gtk_widget_show(notebook);
 }
 
-static void row_changed(GtkTreeModel *model, GtkTreePath  *path,
-				GtkTreeIter  *iter, gpointer user_data)
-{
-	guint type;
-	gboolean powered, inrange;
-
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_TYPE, &type,
-					CONNMAN_COLUMN_ENABLED, &powered,
-					CONNMAN_COLUMN_INRANGE, &inrange, -1);
-}
-
-static void state_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
-			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
-{
-	gboolean inrange;
-
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_INRANGE, &inrange, -1);
-
-	if (inrange == TRUE)
-		g_object_set(cell, "icon-name", GTK_STOCK_YES, NULL);
-	else
-		g_object_set(cell, "icon-name", NULL, NULL);
-}
-
-static void type_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
-			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
-{
-	guint type;
-	gboolean powered, inrange;
-	gchar *markup;
-	const char *title, *info;
-
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_TYPE, &type,
-					CONNMAN_COLUMN_ENABLED, &powered,
-					CONNMAN_COLUMN_INRANGE, &inrange, -1);
-
-	switch (type) {
-	case CONNMAN_TYPE_ETHERNET:
-		title = N_("Ethernet");
-		break;
-	case CONNMAN_TYPE_WIFI:
-		title = N_("Wireless");
-		break;
-	case CONNMAN_TYPE_WIMAX:
-		title = N_("WiMAX");
-		break;
-	case CONNMAN_TYPE_BLUETOOTH:
-		title = N_("Bluetooth");
-		break;
-	default:
-		title = N_("Unknown");
-		break;
-	}
-
-	if (powered == TRUE) {
-		if (inrange == TRUE)
-			info = N_("Connected");
-		else
-			info = N_("Not Connected");
-	} else
-		info = N_("Disabled");
-
-	markup = g_strdup_printf("<b>%s</b>\n<small>%s</small>", title, info);
-	g_object_set(cell, "markup", markup, NULL);
-	g_free(markup);
-}
-
 static void type_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
@@ -382,17 +312,6 @@ static GtkWidget *create_interfaces(GtkWidget *window)
 	gtk_tree_view_append_column(GTK_TREE_VIEW(tree), column);
 
 	renderer = gtk_cell_renderer_pixbuf_new();
-	gtk_cell_renderer_set_fixed_size(renderer, 20, 45);
-	gtk_tree_view_column_pack_start(column, renderer, FALSE);
-	gtk_tree_view_column_set_cell_data_func(column, renderer,
-						state_to_icon, NULL, NULL);
-
-	renderer = gtk_cell_renderer_text_new();
-	gtk_tree_view_column_pack_start(column, renderer, TRUE);
-	gtk_tree_view_column_set_cell_data_func(column, renderer,
-						type_to_text, NULL, NULL);
-
-	renderer = gtk_cell_renderer_pixbuf_new();
 	gtk_tree_view_column_pack_end(column, renderer, FALSE);
 	gtk_tree_view_column_set_cell_data_func(column, renderer,
 						type_to_icon, NULL, NULL);
@@ -412,9 +331,6 @@ static GtkWidget *create_interfaces(GtkWidget *window)
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_SINGLE);
 	g_signal_connect(G_OBJECT(selection), "changed",
 					G_CALLBACK(select_callback), window);
-
-	g_signal_connect(G_OBJECT(model), "row-changed",
-					G_CALLBACK(row_changed), selection);
 
 	return mainbox;
 }
@@ -479,11 +395,9 @@ static GtkWidget *create_window(void)
 
 	return window;
 }
-#endif
 
 int main(int argc, char *argv[])
 {
-#if 0
 	GtkWidget *window;
 
 	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
@@ -501,7 +415,6 @@ int main(int argc, char *argv[])
 	gtk_main();
 
 	g_object_unref(client);
-#endif
 
 	return 0;
 }
