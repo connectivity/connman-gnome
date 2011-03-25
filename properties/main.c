@@ -40,11 +40,17 @@ static void status_update(GtkTreeModel *model, GtkTreePath  *path,
 	struct config_data *data = user_data;
 	guint type;
 	const char *name = NULL, *_name = NULL, *state = NULL;
+	gboolean ethernet_enabled;
+	gboolean wifi_enabled;
+	gboolean offline_mode;
 
 	gtk_tree_model_get(model, iter,
 			CONNMAN_COLUMN_STATE, &state,
 			CONNMAN_COLUMN_NAME, &name,
 			CONNMAN_COLUMN_TYPE, &type,
+			CONNMAN_COLUMN_ETHERNET_ENABLED, &ethernet_enabled,
+			CONNMAN_COLUMN_WIFI_ENABLED, &wifi_enabled,
+			CONNMAN_COLUMN_OFFLINEMODE, &offline_mode,
 			-1);
 
 	if (type == CONNMAN_TYPE_WIFI) {
@@ -69,7 +75,84 @@ static void status_update(GtkTreeModel *model, GtkTreePath  *path,
 			gtk_widget_hide(data->wifi.connect);
 			gtk_widget_show(data->wifi.disconnect);
 		}
+	} else if (type == CONNMAN_TYPE_LABEL_ETHERNET) {
+		if (!data->ethernet_button)
+			return;
+		if (ethernet_enabled)
+			gtk_button_set_label(GTK_BUTTON(data->ethernet_button), _("Disable"));
+		else
+			gtk_button_set_label(GTK_BUTTON(data->ethernet_button), _("Enable"));
+	} else if (type == CONNMAN_TYPE_LABEL_WIFI) {
+		if (!data->wifi_button)
+			return;
+		if (wifi_enabled) {
+			gtk_button_set_label(GTK_BUTTON(data->wifi_button), _("Disable"));
+			gtk_widget_set_sensitive(data->scan_button, 1);
+		} else {
+			gtk_button_set_label(GTK_BUTTON(data->wifi_button), _("Enable"));
+			gtk_widget_set_sensitive(data->scan_button, 0);
+		}
+	} else if (type == CONNMAN_TYPE_SYSCONFIG) {
+		if (!data->offline_button)
+			return;
+		if (offline_mode)
+			gtk_button_set_label(GTK_BUTTON(data->offline_button), _("OnlineMode"));
+		else
+			gtk_button_set_label(GTK_BUTTON(data->offline_button), _("OfflineMode"));
 	}
+
+}
+
+static void set_offline_callback(GtkWidget *button, gpointer user_data)
+{
+	struct config_data *data = user_data;
+	const gchar *label = gtk_button_get_label(GTK_BUTTON(data->offline_button));
+	if (g_str_equal(label, "OnlineMode"))
+		connman_client_set_offlinemode(client, 0);
+	else if (g_str_equal(label, "OfflineMode"))
+		connman_client_set_offlinemode(client, 1);
+}
+
+static void add_system_config(GtkWidget *mainbox, GtkTreeIter *iter,
+		struct config_data *data)
+{
+	GtkWidget *vbox;
+	GtkWidget *table;
+	GtkWidget *label;
+	GtkWidget *buttonbox;
+	GtkWidget *button;
+	gboolean offline_mode;
+
+	vbox = gtk_vbox_new(TRUE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(vbox), 24);
+	gtk_box_pack_start(GTK_BOX(mainbox), vbox, FALSE, FALSE, 0);
+
+	table = gtk_table_new(1, 1, TRUE);
+	gtk_table_set_row_spacings(GTK_TABLE(table), 10);
+	gtk_table_set_col_spacings(GTK_TABLE(table), 10);
+	gtk_box_pack_start(GTK_BOX(vbox), table, FALSE, FALSE, 0);
+
+	label = gtk_label_new(_("System Configuration"));
+	gtk_table_attach_defaults(GTK_TABLE(table), label, 0, 1, 0, 1);
+
+	buttonbox = gtk_hbutton_box_new();
+	gtk_button_box_set_layout(GTK_BUTTON_BOX(buttonbox), GTK_BUTTONBOX_CENTER);
+	gtk_box_pack_start(GTK_BOX(mainbox), buttonbox, FALSE, FALSE, 0);
+
+	gtk_tree_model_get(data->model, iter,
+			CONNMAN_COLUMN_OFFLINEMODE, &offline_mode,
+			-1);
+
+	button = gtk_button_new();
+	data->offline_button = button;
+	if (offline_mode)
+		gtk_button_set_label(GTK_BUTTON(button), _("OnlineMode"));
+	else
+		gtk_button_set_label(GTK_BUTTON(button), _("OfflineMode"));
+
+	gtk_container_add(GTK_CONTAINER(buttonbox), button);
+	g_signal_connect(G_OBJECT(button), "clicked",
+			G_CALLBACK(set_offline_callback), data);
 }
 
 static struct config_data *create_config(GtkTreeModel *model,
@@ -123,6 +206,15 @@ static struct config_data *create_config(GtkTreeModel *model,
 		break;
 	case CONNMAN_TYPE_WIFI:
 		add_wifi_service(mainbox, iter, data);
+		break;
+	case CONNMAN_TYPE_LABEL_ETHERNET:
+		add_ethernet_switch_button(mainbox, iter, data);
+		break;
+	case CONNMAN_TYPE_LABEL_WIFI:
+		add_wifi_switch_button(mainbox, iter, data);
+		break;
+	case CONNMAN_TYPE_SYSCONFIG:
+		add_system_config(mainbox, iter, data);
 		break;
 	default:
 		break;
@@ -219,6 +311,18 @@ static void device_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 		title = N_("Bluetooth");
 		markup = g_strdup_printf("  %s\n", title);
 		break;
+	case CONNMAN_TYPE_LABEL_ETHERNET:
+		title = N_("Wired Networks");
+		markup = g_strdup_printf("<b>\n%s\n</b>", title);
+		break;
+	case CONNMAN_TYPE_LABEL_WIFI:
+		title = N_("Wireless Networks");
+		markup = g_strdup_printf("<b>\n%s\n</b>", title);
+		break;
+	case CONNMAN_TYPE_SYSCONFIG:
+		title = N_("System Configuration");
+		markup = g_strdup_printf("<b>\n%s\n</b>", title);
+		break;
 	default:
 		title = N_("Unknown");
 		markup = g_strdup_printf("  %s\n", title);
@@ -232,23 +336,26 @@ static void device_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 static void type_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 			GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
-	guint type;
+	guint type, strength;
+	char *name;
 
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_TYPE, &type, -1);
+	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_TYPE, &type,
+					CONNMAN_COLUMN_STRENGTH, &strength,
+					-1);
 
 	switch (type) {
-	case CONNMAN_TYPE_ETHERNET:
-		g_object_set(cell, "icon-name", "network-wired",
-						"stock-size", 5, NULL);
-		break;
 	case CONNMAN_TYPE_WIFI:
-	case CONNMAN_TYPE_WIMAX:
-		g_object_set(cell, "icon-name", "network-wireless",
-						"stock-size", 5, NULL);
+		name = g_strdup_printf("connman-signal-0%d", (strength-1)/20+1);
+		g_object_set(cell, "icon-name", name,
+						"stock-size", 4, NULL);
 		break;
-	case CONNMAN_TYPE_BLUETOOTH:
-		g_object_set(cell, "icon-name", "bluetooth",
-						"stock-size", 5, NULL);
+	case CONNMAN_TYPE_LABEL_ETHERNET:
+		g_object_set(cell, "icon-name", "network-wired",
+						"stock-size", 4, NULL);
+		break;
+	case CONNMAN_TYPE_LABEL_WIFI:
+		g_object_set(cell, "icon-name", "network-wireless",
+						"stock-size", 4, NULL);
 		break;
 	default:
 		g_object_set(cell, "icon-name", NULL, NULL);

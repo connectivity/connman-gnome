@@ -91,17 +91,6 @@ done:
 
 static DBusGConnection *connection = NULL;
 
-static gint compare_index(GtkTreeModel *model, GtkTreeIter *iter1,
-					GtkTreeIter *iter2, gpointer user_data)
-{
-	guint index1, index2;
-
-	gtk_tree_model_get(model, iter1, CONNMAN_COLUMN_INDEX, &index1, -1);
-	gtk_tree_model_get(model, iter2, CONNMAN_COLUMN_INDEX, &index2, -1);
-
-	return (gint) index2 - (gint) index1;
-}
-
 static void connman_client_init(ConnmanClient *client)
 {
 	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
@@ -122,14 +111,10 @@ static void connman_client_init(ConnmanClient *client)
 				G_TYPE_STRING,  /* method */
 				G_TYPE_STRING,  /* address */
 				G_TYPE_STRING,  /* netmask */
-				G_TYPE_STRING); /* gateway */
-
-	gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(priv->store),
-						compare_index, NULL, NULL);
-
-	gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(priv->store),
-				GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID,
-							GTK_SORT_DESCENDING);
+				G_TYPE_STRING,  /* gateway */
+				G_TYPE_BOOLEAN, /* gateway */
+				G_TYPE_BOOLEAN, /* gateway */
+				G_TYPE_BOOLEAN);/* gateway */
 
 	g_object_set_data(G_OBJECT(priv->store),
 					"State", g_strdup("unavailable"));
@@ -227,8 +212,15 @@ static gboolean device_filter(GtkTreeModel *model,
 	guint type;
 
 	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy,
-			CONNMAN_COLUMN_TYPE, &type,
-			-1);
+					CONNMAN_COLUMN_TYPE, &type,
+					-1);
+
+	switch (type) {
+	case CONNMAN_TYPE_LABEL_ETHERNET:
+	case CONNMAN_TYPE_LABEL_WIFI:
+	case CONNMAN_TYPE_SYSCONFIG:
+		return TRUE;
+	}
 
 	if (proxy == NULL)
 		return FALSE;
@@ -352,6 +344,50 @@ void connman_client_propose_scan(ConnmanClient *client, const gchar *device)
 	connman_propose_scan(proxy, NULL);
 
 	g_object_unref(proxy);
+}
+
+void connman_client_request_scan(ConnmanClient *client, char *scantype,
+				connman_request_scan_reply callback, gpointer userdata)
+{
+	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
+
+	DBG("client %p", client);
+
+	connman_request_scan_async(priv->manager, scantype, callback, userdata);
+}
+
+gboolean connman_client_get_offline_status(ConnmanClient *client)
+{
+	GHashTable *hash;
+	GValue *value;
+	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
+	gboolean ret;
+
+	DBG("client %p", client);
+
+	ret = connman_get_properties(priv->manager, &hash, NULL);
+
+	if (ret == FALSE)
+		goto done;
+
+	value = g_hash_table_lookup(hash, "OfflineMode");
+	ret = value ? g_value_get_boolean(value) : FALSE;
+
+done:
+	return ret;
+}
+
+void connman_client_set_offlinemode(ConnmanClient *client, gboolean status)
+{
+	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
+	GValue value = { 0 };
+
+	DBG("client %p", client);
+
+	g_value_init(&value, G_TYPE_BOOLEAN);
+	g_value_set_boolean(&value, status);
+
+	connman_set_property(priv->manager, "OfflineMode", &value, NULL);
 }
 
 static gboolean network_disconnect(GtkTreeModel *model, GtkTreePath *path,
@@ -559,6 +595,44 @@ void connman_client_remove(ConnmanClient *client, const gchar *network)
 		return;
 
 	connman_remove(proxy, NULL);
+
+	g_object_unref(proxy);
+}
+
+void connman_client_enable_technology(ConnmanClient *client, const char *network,
+				      const gchar *technology)
+{
+	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
+	DBusGProxy *proxy;
+	int ret;
+
+	if (network== NULL)
+		return;
+
+	proxy = connman_dbus_get_proxy(priv->store, network);
+	if (proxy == NULL)
+		return;
+
+	ret = connman_enable_technology(proxy, technology, NULL);
+
+	g_object_unref(proxy);
+}
+
+void connman_client_disable_technology(ConnmanClient *client, const char *network,
+				      const gchar *technology)
+{
+	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
+	DBusGProxy *proxy;
+	int ret;
+
+	if (network == NULL)
+		return;
+
+	proxy = connman_dbus_get_proxy(priv->store, network);
+	if (proxy == NULL)
+		return;
+
+	ret = connman_disable_technology(proxy, technology, NULL);
 
 	g_object_unref(proxy);
 }

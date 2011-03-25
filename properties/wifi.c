@@ -90,6 +90,87 @@ static void disconnect_callback(GtkWidget *editable, gpointer user_data)
 	connman_client_disconnect(data->client, data->device);
 }
 
+static void switch_callback(GtkWidget *editable, gpointer user_data)
+{
+	struct config_data *data = user_data;
+	const gchar *label = gtk_button_get_label(GTK_BUTTON(data->wifi_button));
+
+	if (g_str_equal(label, "Disable"))
+		connman_client_disable_technology(data->client, data->device, "wifi");
+	else
+		connman_client_enable_technology(data->client, data->device, "wifi");
+}
+
+static void scan_reply_cb(DBusGProxy *proxy, GError *error,
+				   gpointer user_data)
+{
+	GtkWidget *button = user_data;
+	gtk_widget_set_sensitive(button, 1);
+
+	if (error)
+		g_error_free(error);
+}
+
+static void scan_callback(GtkWidget *button, gpointer user_data)
+{
+	struct config_data *data = user_data;
+	gtk_widget_set_sensitive(button, 0);
+	connman_client_request_scan(data->client, "", scan_reply_cb, button);
+}
+
+void add_wifi_switch_button(GtkWidget *mainbox, GtkTreeIter *iter,
+				struct config_data *data)
+{
+	GtkWidget *vbox;
+	GtkWidget *table;
+	GtkWidget *label;
+	GtkWidget *buttonbox;
+	GtkWidget *button;
+	gboolean wifi_enabled;
+
+	gtk_tree_model_get(data->model, iter,
+			CONNMAN_COLUMN_WIFI_ENABLED, &wifi_enabled,
+			-1);
+
+	vbox = gtk_vbox_new(TRUE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(vbox), 24);
+	gtk_box_pack_start(GTK_BOX(mainbox), vbox, FALSE, FALSE, 0);
+
+	table = gtk_table_new(1, 1, TRUE);
+	gtk_table_set_row_spacings(GTK_TABLE(table), 10);
+	gtk_table_set_col_spacings(GTK_TABLE(table), 10);
+	gtk_box_pack_start(GTK_BOX(vbox), table, FALSE, FALSE, 0);
+
+	label = gtk_label_new(_("Configure Wifi Networks."));
+	gtk_table_attach_defaults(GTK_TABLE(table), label, 0, 1, 0, 1);
+
+	buttonbox = gtk_hbutton_box_new();
+	gtk_button_box_set_layout(GTK_BUTTON_BOX(buttonbox), GTK_BUTTONBOX_CENTER);
+	gtk_box_pack_start(GTK_BOX(mainbox), buttonbox, FALSE, FALSE, 0);
+
+	button = gtk_button_new();
+	data->wifi_button = button;
+
+	if (wifi_enabled)
+		gtk_button_set_label(GTK_BUTTON(button), _("Disable"));
+	else
+		gtk_button_set_label(GTK_BUTTON(button), _("Enable"));
+
+	gtk_container_add(GTK_CONTAINER(buttonbox), button);
+	g_signal_connect(G_OBJECT(button), "clicked",
+			G_CALLBACK(switch_callback), data);
+
+	button = gtk_button_new_with_label(_("Scan"));
+	data->scan_button = button;
+
+	if (!wifi_enabled)
+		gtk_widget_set_sensitive(button, 0);
+
+	gtk_container_add(GTK_CONTAINER(buttonbox), button);
+	g_signal_connect(G_OBJECT(button), "clicked",
+			G_CALLBACK(scan_callback), data);
+}
+
 static void wifi_ipconfig(GtkWidget *table, struct config_data *data, GtkTreeIter *iter)
 {
 	GtkWidget *entry;

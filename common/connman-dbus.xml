@@ -17,5 +17,14 @@
     </method>
     <method name="Remove">
     </method>
+    <method name="RequestScan">
+      <arg type="s"/>
+    </method>
+    <method name="EnableTechnology">
+      <arg type="s"/>
+    </method>
+    <method name="DisableTechnology">
+      <arg type="s"/>
+    </method>
   </interface>
 </node>

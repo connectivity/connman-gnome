@@ -89,6 +89,16 @@ void connman_client_set_callback(ConnmanClient *client,
 
 void connman_client_remove(ConnmanClient *client, const gchar *network);
 
+void connman_client_request_scan(ConnmanClient *client, char *scantype,
+				connman_request_scan_reply callback, gpointer userdata);
+gboolean connman_client_get_offline_status(ConnmanClient *client);
+void connman_client_set_offlinemode(ConnmanClient *client, gboolean status);
+
+void connman_client_enable_technology(ConnmanClient *client, const char *network,
+				      const gchar *technology);
+void connman_client_disable_technology(ConnmanClient *client, const char *network,
+				      const gchar *technology);
+
 enum {
 	CONNMAN_COLUMN_PROXY,		/* G_TYPE_OBJECT  */
 	CONNMAN_COLUMN_INDEX,		/* G_TYPE_UINT    */
@@ -104,6 +114,11 @@ enum {
 	CONNMAN_COLUMN_ADDRESS,		/* G_TYPE_STRING  */
 	CONNMAN_COLUMN_NETMASK,		/* G_TYPE_STRING  */
 	CONNMAN_COLUMN_GATEWAY,		/* G_TYPE_STRING  */
+
+	CONNMAN_COLUMN_ETHERNET_ENABLED,/* G_TYPE_STRING  */
+	CONNMAN_COLUMN_WIFI_ENABLED,	/* G_TYPE_STRING  */
+	CONNMAN_COLUMN_OFFLINEMODE,	/* G_TYPE_STRING  */
+
 	_CONNMAN_NUM_COLUMNS
 };
 
@@ -114,6 +129,12 @@ enum {
 	CONNMAN_TYPE_WIMAX,
 	CONNMAN_TYPE_BLUETOOTH,
 	CONNMAN_TYPE_CELLULAR,
+
+	CONNMAN_TYPE_LABEL_ETHERNET,
+	CONNMAN_TYPE_LABEL_WIFI,
+	CONNMAN_TYPE_SYSCONFIG,
+
+	_CONNMAN_NUM_TYPE,
 };
 
 enum {

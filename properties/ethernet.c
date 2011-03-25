@@ -54,6 +54,59 @@ static void apply_callback(GtkWidget *editable, gpointer user_data)
 	connman_client_set_ipv4(data->client, data->device, &data->ipv4_config);
 }
 
+static void switch_callback(GtkWidget *editable, gpointer user_data)
+{
+	struct config_data *data = user_data;
+	const gchar *label = gtk_button_get_label(GTK_BUTTON(data->ethernet_button));
+	if (g_str_equal(label, "Disable"))
+		connman_client_disable_technology(data->client, data->device, "ethernet");
+	else if (g_str_equal(label, "Enable"))
+		connman_client_enable_technology(data->client, data->device, "ethernet");
+}
+
+void add_ethernet_switch_button(GtkWidget *mainbox, GtkTreeIter *iter,
+				struct config_data *data)
+{
+	GtkWidget *vbox;
+	GtkWidget *table;
+	GtkWidget *label;
+	GtkWidget *buttonbox;
+	GtkWidget *button;
+	gboolean ethernet_enabled;
+
+	gtk_tree_model_get(data->model, iter,
+			CONNMAN_COLUMN_ETHERNET_ENABLED, &ethernet_enabled,
+			-1);
+
+	vbox = gtk_vbox_new(TRUE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(vbox), 24);
+	gtk_box_pack_start(GTK_BOX(mainbox), vbox, FALSE, FALSE, 0);
+
+	table = gtk_table_new(1, 1, TRUE);
+	gtk_table_set_row_spacings(GTK_TABLE(table), 10);
+	gtk_table_set_col_spacings(GTK_TABLE(table), 10);
+	gtk_box_pack_start(GTK_BOX(vbox), table, FALSE, FALSE, 0);
+
+	label = gtk_label_new(_("Enable/Disable Wired Networks."));
+	gtk_table_attach_defaults(GTK_TABLE(table), label, 0, 1, 0, 1);
+
+	buttonbox = gtk_hbutton_box_new();
+	gtk_button_box_set_layout(GTK_BUTTON_BOX(buttonbox), GTK_BUTTONBOX_CENTER);
+	gtk_box_pack_start(GTK_BOX(mainbox), buttonbox, FALSE, FALSE, 0);
+
+	button = gtk_button_new();
+	data->ethernet_button = button;
+
+	if (ethernet_enabled)
+		gtk_button_set_label(GTK_BUTTON(button), _("Disable"));
+	else
+		gtk_button_set_label(GTK_BUTTON(button), _("Enable"));
+
+	gtk_container_add(GTK_CONTAINER(buttonbox), button);
+	g_signal_connect(G_OBJECT(button), "clicked",
+			G_CALLBACK(switch_callback), data);
+}
+
 void add_ethernet_service(GtkWidget *mainbox, GtkTreeIter *iter, struct config_data *data)
 {
 	GtkWidget *vbox;

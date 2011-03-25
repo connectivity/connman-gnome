@@ -58,6 +58,12 @@ struct config_data {
 		GtkWidget *connect;
 		GtkWidget *disconnect;
 	} wifi;
+
+	GtkWidget *ethernet_button;
+	GtkWidget *wifi_button;
+
+	GtkWidget *scan_button;
+	GtkWidget *offline_button;
 };
 
 static inline gboolean separator_function(GtkTreeModel *model,
@@ -81,3 +87,9 @@ void update_ethernet_ipv4(struct config_data *data, guint policy);
 
 void add_wifi_service(GtkWidget *mainbox, GtkTreeIter *iter, struct config_data *data);
 void update_wifi_policy(struct config_data *data, guint policy);
+
+void add_ethernet_switch_button(GtkWidget *mainbox, GtkTreeIter *iter,
+				struct config_data *data);
+
+void add_wifi_switch_button(GtkWidget *mainbox, GtkTreeIter *iter,
+				struct config_data *data);
