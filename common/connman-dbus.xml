@@ -15,5 +15,7 @@
     </method>
     <method name="Disconnect">
     </method>
+    <method name="Remove">
+    </method>
   </interface>
 </node>

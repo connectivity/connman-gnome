@@ -32,22 +32,44 @@
 
 static ConnmanClient *client;
 static GtkWidget *interface_notebook;
+static struct config_data *current_data;
 
-static void update_config(struct config_data *data)
+static void status_update(GtkTreeModel *model, GtkTreePath  *path,
+		GtkTreeIter  *iter, gpointer user_data)
 {
-	GtkTreeIter iter;
+	struct config_data *data = user_data;
 	guint type;
-	gchar *network;
+	const char *name = NULL, *_name = NULL, *state = NULL;
 
-	if (gtk_tree_model_get_iter_from_string(data->model,
-						&iter, data->index) == FALSE)
-		return;
+	gtk_tree_model_get(model, iter,
+			CONNMAN_COLUMN_STATE, &state,
+			CONNMAN_COLUMN_NAME, &name,
+			CONNMAN_COLUMN_TYPE, &type,
+			-1);
 
-	gtk_tree_model_get(data->model, &iter,
-				CONNMAN_COLUMN_TYPE, &type,
-				CONNMAN_COLUMN_NAME, &network, -1);
+	if (type == CONNMAN_TYPE_WIFI) {
+		if (data->wifi.name)
+			_name = gtk_label_get_text(GTK_LABEL(data->wifi.name));
 
-	g_free(network);
+		if (!(name && _name && g_str_equal(name, _name)))
+			return;
+
+		if (g_str_equal(state, "failure") == TRUE) {
+			gtk_label_set_text(GTK_LABEL(data->wifi.connect_info),
+					_("connection failed"));
+			gtk_widget_show(data->wifi.connect_info);
+			gtk_widget_show(data->wifi.connect);
+			gtk_widget_hide(data->wifi.disconnect);
+		} else if (g_str_equal(state, "idle") == TRUE) {
+			gtk_widget_hide(data->wifi.connect_info);
+			gtk_widget_show(data->wifi.connect);
+			gtk_widget_hide(data->wifi.disconnect);
+		} else {
+			gtk_widget_hide(data->wifi.connect_info);
+			gtk_widget_hide(data->wifi.connect);
+			gtk_widget_show(data->wifi.disconnect);
+		}
+	}
 }
 
 static struct config_data *create_config(GtkTreeModel *model,
@@ -100,7 +122,7 @@ static struct config_data *create_config(GtkTreeModel *model,
 		add_ethernet_service(mainbox, iter, data);
 		break;
 	case CONNMAN_TYPE_WIFI:
-//		add_wifi_policy(mainbox, data);
+		add_wifi_service(mainbox, iter, data);
 		break;
 	default:
 		break;
@@ -116,6 +138,9 @@ static struct config_data *create_config(GtkTreeModel *model,
 	gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, TRUE, 0);
 
 	gtk_widget_show_all(mainbox);
+
+	g_signal_connect(G_OBJECT(model), "row-changed",
+			G_CALLBACK(status_update), data);
 
 	return data;
 }
@@ -135,19 +160,21 @@ static void select_callback(GtkTreeSelection *selection, gpointer user_data)
 		return;
 	}
 
-	if (data == NULL) {
-		data = create_config(model, &iter, user_data);
-		if (data == NULL)
-			return;
-
-		page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
-							data->widget, NULL);
-	} else {
-		update_config(data);
-
-		page = gtk_notebook_page_num(GTK_NOTEBOOK(notebook),
-								data->widget);
+	if (current_data) {
+		g_signal_handlers_disconnect_by_func(G_OBJECT(model),
+				G_CALLBACK(status_update), current_data);
+		g_free(current_data);
 	}
+
+	data = create_config(model, &iter, user_data);
+	if (data == NULL)
+		return;
+
+
+	current_data = data;
+
+	page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
+				data->widget, NULL);
 
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), page);
 
@@ -168,22 +195,36 @@ static void device_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 	switch (type) {
 	case CONNMAN_TYPE_ETHERNET:
 		title = N_("Ethernet");
+		markup = g_strdup_printf("  %s\n", title);
 		break;
 	case CONNMAN_TYPE_WIFI:
-		title = N_("WIFI");
+		/* Show the AP name */
+		title = N_(name);
+		if (g_str_equal(state, "association") == TRUE)
+			state = "associating...";
+		else if (g_str_equal(state, "configuration") == TRUE)
+			state = "configurating...";
+		else if (g_str_equal(state, "ready") == TRUE ||
+				g_str_equal(state, "online") == TRUE)
+			state = "connnected";
+		else
+			state = "";
+		markup = g_strdup_printf("  %s\n  %s", title, state);
 		break;
 	case CONNMAN_TYPE_WIMAX:
 		title = N_("WiMAX");
+		markup = g_strdup_printf("  %s\n", title);
 		break;
 	case CONNMAN_TYPE_BLUETOOTH:
 		title = N_("Bluetooth");
+		markup = g_strdup_printf("  %s\n", title);
 		break;
 	default:
 		title = N_("Unknown");
+		markup = g_strdup_printf("  %s\n", title);
 		break;
 	}
 
-	markup = g_strdup_printf("  %s\n", title);
 	g_object_set(cell, "markup", markup, NULL);
 	g_free(markup);
 }
@@ -349,6 +390,8 @@ int main(int argc, char *argv[])
 	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
 	bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
 	textdomain(GETTEXT_PACKAGE);
+
+	current_data = NULL;
 
 	gtk_init(&argc, &argv);
 

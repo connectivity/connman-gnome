@@ -23,6 +23,7 @@ struct config_data {
 	ConnmanClient *client;
 
 	GtkWidget *widget;
+	GtkWidget *table;
 	GtkWidget *title;
 	GtkWidget *label;
 	GtkWidget *button;
@@ -47,6 +48,16 @@ struct config_data {
 	} ipv4;
 
 	struct ipv4_config ipv4_config;
+
+	struct {
+		GtkWidget *name;
+		GtkWidget *security;
+		GtkWidget *strength;
+		GtkWidget *passphrase;
+		GtkWidget *connect_info;
+		GtkWidget *connect;
+		GtkWidget *disconnect;
+	} wifi;
 };
 
 static inline gboolean separator_function(GtkTreeModel *model,
@@ -68,5 +79,5 @@ static inline gboolean separator_function(GtkTreeModel *model,
 void add_ethernet_service(GtkWidget *mainbox, GtkTreeIter *iter, struct config_data *data);
 void update_ethernet_ipv4(struct config_data *data, guint policy);
 
-void add_wifi_policy(GtkWidget *mainbox, struct config_data *data);
+void add_wifi_service(GtkWidget *mainbox, GtkTreeIter *iter, struct config_data *data);
 void update_wifi_policy(struct config_data *data, guint policy);

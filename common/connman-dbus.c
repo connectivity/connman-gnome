@@ -194,46 +194,6 @@ static const gchar *type2icon(guint type)
 	return NULL;
 }
 
-static guint get_state(const GValue *value)
-{
-	const char *state = value ? g_value_get_string(value) : NULL;
-
-	if (state == NULL)
-		return CONNMAN_STATE_UNKNOWN;
-	else if (g_str_equal(state, "idle") == TRUE)
-		return CONNMAN_STATE_IDLE;
-	else if (g_str_equal(state, "carrier") == TRUE)
-		return CONNMAN_STATE_CARRIER;
-	else if (g_str_equal(state, "association") == TRUE)
-		return CONNMAN_STATE_ASSOCIATION;
-	else if (g_str_equal(state, "configuration") == TRUE)
-		return CONNMAN_STATE_CONFIGURATION;
-	else if (g_str_equal(state, "ready") == TRUE)
-		return CONNMAN_STATE_READY;
-	else if (g_str_equal(state, "failure") == TRUE)
-		return CONNMAN_STATE_FAILURE;
-
-	return CONNMAN_STATE_UNKNOWN;
-}
-
-static guint get_security(const GValue *value)
-{
-	const char *security = value ? g_value_get_string(value) : NULL;
-
-	if (security == NULL)
-		return CONNMAN_SECURITY_UNKNOWN;
-	else if (g_str_equal(security, "none") == TRUE)
-		return CONNMAN_SECURITY_NONE;
-	else if (g_str_equal(security, "wep") == TRUE)
-		return CONNMAN_SECURITY_WEP;
-	else if (g_str_equal(security, "wpa") == TRUE)
-		return CONNMAN_SECURITY_WPA;
-	else if (g_str_equal(security, "rsn") == TRUE)
-		return CONNMAN_SECURITY_RSN;
-
-	return CONNMAN_SECURITY_UNKNOWN;
-}
-
 static void service_changed(DBusGProxy *proxy, const char *property,
 					GValue *value, gpointer user_data)
 {
@@ -243,7 +203,6 @@ static void service_changed(DBusGProxy *proxy, const char *property,
 	GHashTable *ipv4;
 	const char *method, *addr, *netmask, *gateway;
 	GValue *ipv4_method, *ipv4_address, *ipv4_netmask, *ipv4_gateway;
-
 
 	DBG("store %p proxy %p property %s", store, proxy, property);
 
@@ -277,13 +236,23 @@ static void service_changed(DBusGProxy *proxy, const char *property,
 					CONNMAN_COLUMN_GATEWAY, gateway,
 					-1);
 	} else if (g_str_equal(property, "State") == TRUE) {
-		guint state = get_state(value);
+		const char *state = value ? g_value_get_string(value) : NULL;
 		gtk_tree_store_set(store, &iter,
 					CONNMAN_COLUMN_STATE, state, -1);
 	} else if (g_str_equal(property, "Favorite") == TRUE) {
 		gboolean favorite = g_value_get_boolean(value);
 		gtk_tree_store_set(store, &iter,
 					CONNMAN_COLUMN_FAVORITE, favorite, -1);
+	} else if (g_str_equal(property, "Security") == TRUE) {
+		const char *security = value ? g_value_get_string(value) : NULL;
+		gtk_tree_store_set(store, &iter,
+					CONNMAN_COLUMN_SECURITY, security,
+					-1);
+	} else if (g_str_equal(property, "PassPhrase") == TRUE) {
+		const char *passphrase = value ? g_value_get_string(value) : NULL;
+		gtk_tree_store_set(store, &iter,
+					CONNMAN_COLUMN_PASSPHRASE, passphrase,
+					-1);
 	} else if (g_str_equal(property, "Strength") == TRUE) {
 		guint strength = g_value_get_uchar(value);
 		gtk_tree_store_set(store, &iter,
@@ -364,8 +333,8 @@ static void service_properties(DBusGProxy *proxy, GHashTable *hash,
 {
 	GtkTreeStore *store = user_data;
 	GValue *value;
-	const gchar *name, *icon;
-	guint type, state, strength, security;
+	const gchar *name, *icon, *passphrase, *security, *state;
+	guint type, strength;
 	gboolean favorite;
 	GtkTreeIter iter;
 
@@ -386,16 +355,19 @@ static void service_properties(DBusGProxy *proxy, GHashTable *hash,
 	icon = type2icon(type);
 
 	value = g_hash_table_lookup(hash, "State");
-	state = get_state(value);
+	state = value ? g_value_get_string(value) : NULL;
 
 	value = g_hash_table_lookup(hash, "Favorite");
 	favorite = value ? g_value_get_boolean(value) : FALSE;
 
 	value = g_hash_table_lookup(hash, "Strength");
-	strength= value ? g_value_get_uchar(value) : 0;
+	strength = value ? g_value_get_uchar(value) : 0;
 
 	value = g_hash_table_lookup(hash, "Security");
-	security = get_security(value);
+	security = value ? g_value_get_string(value) : NULL;
+
+	value = g_hash_table_lookup(hash, "PassPhrase");
+	passphrase = value ? g_value_get_string(value) : NULL;
 
 	DBG("name %s type %d icon %s", name, type, icon);
 
@@ -427,6 +399,7 @@ static void service_properties(DBusGProxy *proxy, GHashTable *hash,
 					CONNMAN_COLUMN_FAVORITE, favorite,
 					CONNMAN_COLUMN_STRENGTH, strength,
 					CONNMAN_COLUMN_SECURITY, security,
+					CONNMAN_COLUMN_PASSPHRASE, passphrase,
 					CONNMAN_COLUMN_METHOD, method,
 					CONNMAN_COLUMN_ADDRESS, addr,
 					CONNMAN_COLUMN_NETMASK, netmask,
@@ -446,6 +419,7 @@ static void service_properties(DBusGProxy *proxy, GHashTable *hash,
 					CONNMAN_COLUMN_FAVORITE, favorite,
 					CONNMAN_COLUMN_STRENGTH, strength,
 					CONNMAN_COLUMN_SECURITY, security,
+					CONNMAN_COLUMN_PASSPHRASE, passphrase,
 					CONNMAN_COLUMN_METHOD, method,
 					CONNMAN_COLUMN_ADDRESS, addr,
 					CONNMAN_COLUMN_NETMASK, netmask,
