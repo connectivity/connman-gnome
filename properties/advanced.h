@@ -47,13 +47,24 @@ struct config_data {
 	} ipv4;
 };
 
-void create_advanced_dialog(struct config_data *data, guint type);
+static inline gboolean separator_function(GtkTreeModel *model,
+					GtkTreeIter *iter, gpointer user_data)
+{
+	gchar *text;
+	gboolean result = FALSE;
+
+	gtk_tree_model_get(model, iter, 0, &text, -1);
+
+	if (text && *text == '\0')
+		result = TRUE;
+
+	g_free(text);
+
+	return result;
+}
 
 void add_ethernet_policy(GtkWidget *mainbox, struct config_data *data);
 void update_ethernet_policy(struct config_data *data, guint policy);
 
 void add_wifi_policy(GtkWidget *mainbox, struct config_data *data);
 void update_wifi_policy(struct config_data *data, guint policy);
-
-gboolean separator_function(GtkTreeModel *model,
-					GtkTreeIter *iter, gpointer user_data);

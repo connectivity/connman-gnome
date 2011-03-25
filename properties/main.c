@@ -33,65 +33,6 @@
 static ConnmanClient *client;
 static GtkWidget *interface_notebook;
 
-static void update_status(struct config_data *data,
-				guint type, gboolean inrange, guint policy,
-				const gchar *network, const gchar *address)
-{
-	const char *str;
-	gchar *markup, *info = NULL;
-
-	switch (type) {
-	case CONNMAN_TYPE_ETHERNET:
-		if (inrange == TRUE) {
-			str = N_("Connected");
-			info = g_strdup_printf(_("%s is currently active "
-						"and has the IP address %s."),
-						N_("Ethernet"), address);
-		} else {
-			str = N_("Cable Unplugged");
-			info = g_strdup_printf(_("The cable for %s is "
-					"not plugged in."), N_("Ethernet"));
-		}
-		break;
-
-	case CONNMAN_TYPE_WIFI:
-		if (inrange == TRUE) {
-			str = N_("Connected");
-			info = g_strdup_printf(_("%s is currently active "
-						"and has the IP address %s."),
-						N_("Wireless"), address);
-		} else
-			str = N_("Not Connected");
-		break;
-
-	default:
-		if (inrange == TRUE)
-			str = N_("Connected");
-		else
-			str = N_("Not Connected");
-		break;
-	}
-
-	markup = g_strdup_printf("<b>%s</b>", str);
-	gtk_label_set_markup(GTK_LABEL(data->title), markup);
-	g_free(markup);
-
-	gtk_label_set_markup(GTK_LABEL(data->label), info);
-
-	g_free(info);
-
-	switch (type) {
-	case CONNMAN_TYPE_ETHERNET:
-		update_ethernet_policy(data, policy);
-		break;
-	case CONNMAN_TYPE_WIFI:
-		update_wifi_policy(data, policy);
-		break;
-	default:
-		break;
-	}
-}
-
 static void update_config(struct config_data *data)
 {
 	GtkTreeIter iter;
@@ -109,26 +50,16 @@ static void update_config(struct config_data *data)
 	g_free(network);
 }
 
-static void advanced_callback(GtkWidget *button, gpointer user_data)
-{
-	struct config_data *data = user_data;
-
-	gtk_widget_show_all(data->dialog);
-}
-
 static struct config_data *create_config(GtkTreeModel *model,
 					GtkTreeIter *iter, gpointer user_data)
 {
 	GtkWidget *mainbox;
 	GtkWidget *label;
 	GtkWidget *hbox;
-	GtkWidget *button;
 	struct config_data *data;
 	DBusGProxy *proxy;
-	guint type, policy;
-	gboolean inrange;
-	gchar *markup, *vendor = NULL, *product = NULL;
-	gchar *network = NULL, *address = NULL;
+	guint type;
+	char *state;
 
 	data = g_try_new0(struct config_data, 1);
 	if (data == NULL)
@@ -139,11 +70,8 @@ static struct config_data *create_config(GtkTreeModel *model,
 	gtk_tree_model_get(model, iter,
 				CONNMAN_COLUMN_PROXY, &proxy,
 				CONNMAN_COLUMN_TYPE, &type,
-				CONNMAN_COLUMN_ADDRESS, &address,
+				CONNMAN_COLUMN_STATE, &state,
 				-1);
-
-	data->device = g_strdup(dbus_g_proxy_get_path(proxy));
-	g_object_unref(proxy);
 
 	mainbox = gtk_vbox_new(FALSE, 6);
 	data->widget = mainbox;
@@ -160,6 +88,12 @@ static struct config_data *create_config(GtkTreeModel *model,
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.0);
 	gtk_box_pack_start(GTK_BOX(mainbox), label, FALSE, FALSE, 0);
 	data->label = label;
+
+	data->window = user_data;
+	data->model = model;
+	data->index = gtk_tree_model_get_string_from_iter(model, iter);
+	data->device = g_strdup(dbus_g_proxy_get_path(proxy));
+	g_object_unref(proxy);
 
 	switch (type) {
 	case CONNMAN_TYPE_ETHERNET:
@@ -181,34 +115,7 @@ static struct config_data *create_config(GtkTreeModel *model,
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, 1.0);
 	gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, TRUE, 0);
 
-	markup = g_strdup_printf("%s\n<small>%s</small>",
-			vendor ? vendor : "", product ? product : "");
-	gtk_label_set_markup(GTK_LABEL(label), markup);
-	g_free(markup);
-
-	if (0) {
-		button = gtk_button_new_with_label(_("Advanced..."));
-		gtk_box_pack_start(GTK_BOX(hbox), button, FALSE, FALSE, 0);
-		g_signal_connect(G_OBJECT(button), "clicked",
-				G_CALLBACK(advanced_callback), data);
-		data->button = button;
-	}
-
-	data->window = user_data;
-	create_advanced_dialog(data, type);
-
-	update_status(data, type, inrange, policy, network, address);
-
-	g_free(network);
-	g_free(address);
-
-	data->model = model;
-	data->index = gtk_tree_model_get_string_from_iter(model, iter);
-
 	gtk_widget_show_all(mainbox);
-
-	g_free(product);
-	g_free(vendor);
 
 	return data;
 }
