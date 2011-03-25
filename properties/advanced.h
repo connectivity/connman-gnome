@@ -45,6 +45,8 @@ struct config_data {
 		GtkWidget *value[3];
 		GtkWidget *entry[3];
 	} ipv4;
+
+	struct ipv4_config ipv4_config;
 };
 
 static inline gboolean separator_function(GtkTreeModel *model,
@@ -63,8 +65,8 @@ static inline gboolean separator_function(GtkTreeModel *model,
 	return result;
 }
 
-void add_ethernet_policy(GtkWidget *mainbox, struct config_data *data);
-void update_ethernet_policy(struct config_data *data, guint policy);
+void add_ethernet_service(GtkWidget *mainbox, GtkTreeIter *iter, struct config_data *data);
+void update_ethernet_ipv4(struct config_data *data, guint policy);
 
 void add_wifi_policy(GtkWidget *mainbox, struct config_data *data);
 void update_wifi_policy(struct config_data *data, guint policy);

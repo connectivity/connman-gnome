@@ -1,5 +1,5 @@
 
-noinst_PROGRAMS = connman-properties
+bin_PROGRAMS = connman-properties
 
 connman_properties_SOURCES = main.c advanced.h ethernet.c
 

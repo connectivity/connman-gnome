@@ -119,7 +119,10 @@ static void connman_client_init(ConnmanClient *client)
 				G_TYPE_UINT,	/* strength */
 				G_TYPE_UINT,	/* security */
 				G_TYPE_STRING,  /* passphrase */
-				G_TYPE_STRING); /* address */
+				G_TYPE_STRING,  /* method */
+				G_TYPE_STRING,  /* address */
+				G_TYPE_STRING,  /* netmask */
+				G_TYPE_STRING); /* gateway */
 
 	gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(priv->store),
 						compare_index, NULL, NULL);
@@ -275,6 +278,37 @@ void connman_client_set_policy(ConnmanClient *client, const gchar *device,
 	connman_set_property(proxy, "Policy", &value, NULL);
 
 	g_object_unref(proxy);
+}
+
+gboolean connman_client_set_ipv4(ConnmanClient *client, const gchar *device,
+				struct ipv4_config *ipv4_config)
+{
+	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
+	DBusGProxy *proxy;
+	GValue value = { 0 };
+	gboolean ret;
+	GHashTable *ipv4 = g_hash_table_new(g_str_hash, g_str_equal);
+
+	g_hash_table_insert(ipv4, "Method",  (gpointer)ipv4_config->method);
+	g_hash_table_insert(ipv4, "Address", (gpointer)ipv4_config->address);
+	g_hash_table_insert(ipv4, "Netmask", (gpointer)ipv4_config->netmask);
+	g_hash_table_insert(ipv4, "Gateway", (gpointer)ipv4_config->gateway);
+
+	DBG("client %p", client);
+
+	if (device == NULL)
+		return FALSE;
+
+	proxy = connman_dbus_get_proxy(priv->store, device);
+	if (proxy == NULL)
+		return FALSE;
+	g_value_init(&value, DBUS_TYPE_G_STRING_STRING_HASHTABLE);
+	g_value_set_boxed(&value, ipv4);
+	ret = connman_set_property(proxy, "IPv4.Configuration", &value, NULL);
+
+	g_object_unref(proxy);
+
+	return ret;
 }
 
 void connman_client_set_powered(ConnmanClient *client, const gchar *device,

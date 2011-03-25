@@ -240,6 +240,10 @@ static void service_changed(DBusGProxy *proxy, const char *property,
 	GtkTreeStore *store = user_data;
 	const char *path = dbus_g_proxy_get_path(proxy);
 	GtkTreeIter iter;
+	GHashTable *ipv4;
+	const char *method, *addr, *netmask, *gateway;
+	GValue *ipv4_method, *ipv4_address, *ipv4_netmask, *ipv4_gateway;
+
 
 	DBG("store %p proxy %p property %s", store, proxy, property);
 
@@ -249,7 +253,30 @@ static void service_changed(DBusGProxy *proxy, const char *property,
 	if (get_iter_from_path(store, &iter, path) == FALSE)
 		return;
 
-	if (g_str_equal(property, "State") == TRUE) {
+	if (g_str_equal(property, "IPv4") == TRUE) {
+		ipv4 = g_value_get_boxed (value);
+		if (!ipv4)
+			return;
+
+		ipv4_method = g_hash_table_lookup (ipv4, "Method");
+		method = ipv4_method ? g_value_get_string(ipv4_method) : NULL;
+
+		ipv4_address = g_hash_table_lookup (ipv4, "Address");
+		addr = ipv4_address ? g_value_get_string(ipv4_address) : NULL;
+
+		ipv4_netmask = g_hash_table_lookup (ipv4, "Netmask");
+		netmask = ipv4_netmask ? g_value_get_string(ipv4_netmask) : NULL;
+
+		ipv4_gateway = g_hash_table_lookup (ipv4, "Gateway");
+		gateway = ipv4_gateway ? g_value_get_string(ipv4_gateway) : NULL;
+
+		gtk_tree_store_set(store, &iter,
+					CONNMAN_COLUMN_METHOD, method,
+					CONNMAN_COLUMN_ADDRESS, addr,
+					CONNMAN_COLUMN_NETMASK, netmask,
+					CONNMAN_COLUMN_GATEWAY, gateway,
+					-1);
+	} else if (g_str_equal(property, "State") == TRUE) {
 		guint state = get_state(value);
 		gtk_tree_store_set(store, &iter,
 					CONNMAN_COLUMN_STATE, state, -1);
@@ -342,6 +369,10 @@ static void service_properties(DBusGProxy *proxy, GHashTable *hash,
 	gboolean favorite;
 	GtkTreeIter iter;
 
+	GHashTable *ipv4;
+	GValue *ipv4_method, *ipv4_address, *ipv4_netmask, *ipv4_gateway;
+	const char *method, *addr, *netmask, *gateway;
+
 	DBG("store %p proxy %p hash %p", store, proxy, hash);
 
 	if (error != NULL || hash == NULL)
@@ -368,6 +399,24 @@ static void service_properties(DBusGProxy *proxy, GHashTable *hash,
 
 	DBG("name %s type %d icon %s", name, type, icon);
 
+	value = g_hash_table_lookup(hash, "IPv4.Configuration");
+	ipv4 = g_value_get_boxed (value);
+
+	if (!ipv4)
+		goto done;
+
+	ipv4_method = g_hash_table_lookup (ipv4, "Method");
+	method = ipv4_method ? g_value_get_string(ipv4_method) : NULL;
+
+	ipv4_address = g_hash_table_lookup (ipv4, "Address");
+	addr = ipv4_address ? g_value_get_string(ipv4_address) : NULL;
+
+	ipv4_netmask = g_hash_table_lookup (ipv4, "Netmask");
+	netmask = ipv4_netmask ? g_value_get_string(ipv4_netmask) : NULL;
+
+	ipv4_gateway = g_hash_table_lookup (ipv4, "Gateway");
+	gateway = ipv4_gateway ? g_value_get_string(ipv4_gateway) : NULL;
+
 	if (get_iter_from_proxy(store, &iter, proxy) == FALSE) {
 		gtk_tree_store_insert_with_values(store, &iter, NULL, -1,
 					CONNMAN_COLUMN_PROXY, proxy,
@@ -377,7 +426,12 @@ static void service_properties(DBusGProxy *proxy, GHashTable *hash,
 					CONNMAN_COLUMN_STATE, state,
 					CONNMAN_COLUMN_FAVORITE, favorite,
 					CONNMAN_COLUMN_STRENGTH, strength,
-					CONNMAN_COLUMN_SECURITY, security, -1);
+					CONNMAN_COLUMN_SECURITY, security,
+					CONNMAN_COLUMN_METHOD, method,
+					CONNMAN_COLUMN_ADDRESS, addr,
+					CONNMAN_COLUMN_NETMASK, netmask,
+					CONNMAN_COLUMN_GATEWAY, gateway,
+					-1);
 
 		dbus_g_proxy_add_signal(proxy, "PropertyChanged",
 				G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
@@ -391,7 +445,12 @@ static void service_properties(DBusGProxy *proxy, GHashTable *hash,
 					CONNMAN_COLUMN_STATE, state,
 					CONNMAN_COLUMN_FAVORITE, favorite,
 					CONNMAN_COLUMN_STRENGTH, strength,
-					CONNMAN_COLUMN_SECURITY, security, -1);
+					CONNMAN_COLUMN_SECURITY, security,
+					CONNMAN_COLUMN_METHOD, method,
+					CONNMAN_COLUMN_ADDRESS, addr,
+					CONNMAN_COLUMN_NETMASK, netmask,
+					CONNMAN_COLUMN_GATEWAY, gateway,
+					-1);
 
 done:
 	g_object_unref(proxy);

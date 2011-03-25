@@ -49,6 +49,13 @@ struct _ConnmanClientClass {
 	GObjectClass parent_class;
 };
 
+struct ipv4_config {
+	const gchar *method;
+	const gchar *address;
+	const gchar *netmask;
+	const gchar *gateway;
+};
+
 GType connman_client_get_type(void);
 
 ConnmanClient *connman_client_new(void);
@@ -61,6 +68,8 @@ void connman_client_set_policy(ConnmanClient *client, const gchar *device,
 							const gchar *policy);
 void connman_client_set_powered(ConnmanClient *client, const gchar *device,
 							gboolean powered);
+gboolean connman_client_set_ipv4(ConnmanClient *client, const gchar *device,
+				struct ipv4_config *ipv4_config);
 void connman_client_propose_scan(ConnmanClient *client, const gchar *device);
 
 void connman_client_connect(ConnmanClient *client, const gchar *network);
@@ -89,7 +98,10 @@ enum {
 	CONNMAN_COLUMN_STRENGTH,	/* G_TYPE_UINT    */
 	CONNMAN_COLUMN_SECURITY,	/* G_TYPE_UINT    */
 	CONNMAN_COLUMN_PASSPHRASE,	/* G_TYPE_STRING  */
+	CONNMAN_COLUMN_METHOD,		/* G_TYPE_STRING  */
 	CONNMAN_COLUMN_ADDRESS,		/* G_TYPE_STRING  */
+	CONNMAN_COLUMN_NETMASK,		/* G_TYPE_STRING  */
+	CONNMAN_COLUMN_GATEWAY,		/* G_TYPE_STRING  */
 	_CONNMAN_NUM_COLUMNS
 };
 
@@ -100,6 +112,11 @@ enum {
 	CONNMAN_TYPE_WIMAX,
 	CONNMAN_TYPE_BLUETOOTH,
 	CONNMAN_TYPE_CELLULAR,
+};
+
+enum {
+	CONNMAN_POLICY_DHCP,
+	CONNMAN_POLICY_MANUAL,
 };
 
 enum {

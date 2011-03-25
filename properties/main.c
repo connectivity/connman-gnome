@@ -97,7 +97,7 @@ static struct config_data *create_config(GtkTreeModel *model,
 
 	switch (type) {
 	case CONNMAN_TYPE_ETHERNET:
-		add_ethernet_policy(mainbox, data);
+		add_ethernet_service(mainbox, iter, data);
 		break;
 	case CONNMAN_TYPE_WIFI:
 //		add_wifi_policy(mainbox, data);
