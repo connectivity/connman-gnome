@@ -245,6 +245,7 @@ static void select_callback(GtkTreeSelection *selection, gpointer user_data)
 	gboolean selected;
 	struct config_data *data = NULL;
 	gint page;
+	gint last_page;
 
 	selected = gtk_tree_selection_get_selected(selection, &model, &iter);
 	if (selected == FALSE) {
@@ -265,12 +266,16 @@ static void select_callback(GtkTreeSelection *selection, gpointer user_data)
 
 	current_data = data;
 
+	last_page = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
 	page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook),
 				data->widget, NULL);
 
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), page);
 
 	gtk_widget_show(notebook);
+
+	if (last_page != -1)
+		gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), last_page);
 }
 
 static void device_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
