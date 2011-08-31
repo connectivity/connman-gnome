@@ -208,6 +208,8 @@ static const gchar *type2icon(guint type)
 	case CONNMAN_TYPE_WIFI:
 	case CONNMAN_TYPE_WIMAX:
 		return "network-wireless";
+	case CONNMAN_TYPE_CELLULAR:
+		return "network-cellular";
 	case CONNMAN_TYPE_BLUETOOTH:
 		return "bluetooth";
 	}
@@ -220,6 +222,7 @@ static void enabled_technologies_changed(GtkTreeStore *store, GValue *value)
 	GtkTreeIter iter;
 	gboolean ethernet_enabled_prev, ethernet_enabled = FALSE;
 	gboolean wifi_enabled_prev, wifi_enabled = FALSE;
+	gboolean cellular_enabled_prev, cellular_enabled = FALSE;
 	gchar **tech = g_value_get_boxed (value);
 	guint i;
 
@@ -227,10 +230,13 @@ static void enabled_technologies_changed(GtkTreeStore *store, GValue *value)
 		return;
 
 	for (i = 0; i < g_strv_length(tech); i++) {
+		DBG("technology: %s", *(tech+i));
 		if (g_str_equal("ethernet", *(tech + i)))
 			ethernet_enabled = TRUE;
 		else if (g_str_equal ("wifi", *(tech + i)))
 			wifi_enabled = TRUE;
+		else if (g_str_equal ("cellular", *(tech + i)))
+			cellular_enabled = TRUE;
 	}
 
 	get_iter_from_type(store, &iter, CONNMAN_TYPE_LABEL_ETHERNET);
@@ -246,6 +252,13 @@ static void enabled_technologies_changed(GtkTreeStore *store, GValue *value)
 	if (wifi_enabled_prev != wifi_enabled)
 		gtk_tree_store_set(store, &iter,
 					CONNMAN_COLUMN_WIFI_ENABLED, wifi_enabled, -1);
+
+	get_iter_from_type(store, &iter, CONNMAN_TYPE_LABEL_CELLULAR);
+	gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
+			CONNMAN_COLUMN_CELLULAR_ENABLED, &cellular_enabled_prev, -1);
+	if (cellular_enabled_prev != cellular_enabled)
+		gtk_tree_store_set(store, &iter,
+					CONNMAN_COLUMN_CELLULAR_ENABLED, cellular_enabled, -1);
 }
 
 static void enabled_technologies_properties(GtkTreeStore *store, DBusGProxy *proxy, GValue *value)
@@ -253,14 +266,18 @@ static void enabled_technologies_properties(GtkTreeStore *store, DBusGProxy *pro
 	GtkTreeIter iter;
 	gboolean ethernet_enabled = FALSE;
 	gboolean wifi_enabled = FALSE;
+	gboolean cellular_enabled = FALSE;
 	gchar **tech = g_value_get_boxed (value);
 	guint i;
 
 	for (i = 0; i < g_strv_length (tech); i++) {
+		DBG("technology: %s", *(tech+i));
 		if (g_str_equal("ethernet", *(tech + i)))
 			ethernet_enabled = TRUE;
 		else if (g_str_equal ("wifi", *(tech + i)))
 			wifi_enabled = TRUE;
+		else if (g_str_equal ("cellular", *(tech + i)))
+			cellular_enabled = TRUE;
 	}
 
 	if (get_iter_from_type(store, &iter, CONNMAN_TYPE_LABEL_ETHERNET) == FALSE)
@@ -279,6 +296,15 @@ static void enabled_technologies_properties(GtkTreeStore *store, DBusGProxy *pro
 			CONNMAN_COLUMN_PROXY, proxy,
 			CONNMAN_COLUMN_WIFI_ENABLED, wifi_enabled,
 			CONNMAN_COLUMN_TYPE, CONNMAN_TYPE_LABEL_WIFI,
+			-1);
+
+	if (get_iter_from_type(store, &iter, CONNMAN_TYPE_LABEL_CELLULAR) == FALSE)
+		gtk_tree_store_append(store, &iter, NULL);
+
+	gtk_tree_store_set(store, &iter,
+			CONNMAN_COLUMN_PROXY, proxy,
+			CONNMAN_COLUMN_CELLULAR_ENABLED, cellular_enabled,
+			CONNMAN_COLUMN_TYPE, CONNMAN_TYPE_LABEL_CELLULAR,
 			-1);
 }
 
@@ -496,6 +522,9 @@ static void service_properties(DBusGProxy *proxy, GHashTable *hash,
 			break;
 		case CONNMAN_TYPE_WIFI:
 			label_type = CONNMAN_TYPE_LABEL_WIFI;
+			break;
+		case CONNMAN_TYPE_CELLULAR:
+			label_type = CONNMAN_TYPE_LABEL_CELLULAR;
 			break;
 		default:
 			label_type = CONNMAN_TYPE_UNKNOWN;

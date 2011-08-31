@@ -59,10 +59,18 @@ struct config_data {
 		GtkWidget *disconnect;
 	} wifi;
 
+	struct {
+		GtkWidget *name;
+		GtkWidget *strength;
+		GtkWidget *connect_info;
+		GtkWidget *connect;
+		GtkWidget *disconnect;
+	} cellular;
+
 	GtkWidget *ethernet_button;
 	GtkWidget *wifi_button;
-
 	GtkWidget *scan_button;
+	GtkWidget *cellular_button;
 	GtkWidget *offline_button;
 };
 
@@ -88,8 +96,11 @@ void update_ethernet_ipv4(struct config_data *data, guint policy);
 void add_wifi_service(GtkWidget *mainbox, GtkTreeIter *iter, struct config_data *data);
 void update_wifi_policy(struct config_data *data, guint policy);
 
+void add_cellular_service(GtkWidget *mainbox, GtkTreeIter *iter, struct config_data *data);
 void add_ethernet_switch_button(GtkWidget *mainbox, GtkTreeIter *iter,
 				struct config_data *data);
 
 void add_wifi_switch_button(GtkWidget *mainbox, GtkTreeIter *iter,
+				struct config_data *data);
+void add_cellular_switch_button(GtkWidget *mainbox, GtkTreeIter *iter,
 				struct config_data *data);

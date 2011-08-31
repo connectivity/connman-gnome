@@ -42,6 +42,7 @@ static void status_update(GtkTreeModel *model, GtkTreePath  *path,
 	const char *name = NULL, *_name = NULL, *state = NULL;
 	gboolean ethernet_enabled;
 	gboolean wifi_enabled;
+	gboolean cellular_enabled;
 	gboolean offline_mode;
 
 	gtk_tree_model_get(model, iter,
@@ -50,6 +51,7 @@ static void status_update(GtkTreeModel *model, GtkTreePath  *path,
 			CONNMAN_COLUMN_TYPE, &type,
 			CONNMAN_COLUMN_ETHERNET_ENABLED, &ethernet_enabled,
 			CONNMAN_COLUMN_WIFI_ENABLED, &wifi_enabled,
+			CONNMAN_COLUMN_CELLULAR_ENABLED, &cellular_enabled,
 			CONNMAN_COLUMN_OFFLINEMODE, &offline_mode,
 			-1);
 
@@ -75,6 +77,29 @@ static void status_update(GtkTreeModel *model, GtkTreePath  *path,
 			gtk_widget_hide(data->wifi.connect);
 			gtk_widget_show(data->wifi.disconnect);
 		}
+	} else if (type == CONNMAN_TYPE_CELLULAR) {
+		if (data->cellular.name)
+			_name = gtk_label_get_text(GTK_LABEL(data->cellular.name));
+
+		if (!(name && _name && g_str_equal(name, _name)))
+			return;
+
+		if (g_str_equal(state, "failure") == TRUE) {
+			gtk_label_set_text(GTK_LABEL(data->cellular.connect_info),
+					_("connection failed"));
+			gtk_widget_show(data->cellular.connect_info);
+			gtk_widget_show(data->cellular.connect);
+			gtk_widget_hide(data->cellular.disconnect);
+		} else if (g_str_equal(state, "idle") == TRUE) {
+			gtk_widget_hide(data->cellular.connect_info);
+			gtk_widget_show(data->cellular.connect);
+			gtk_widget_hide(data->cellular.disconnect);
+		} else {
+			gtk_widget_hide(data->cellular.connect_info);
+			gtk_widget_hide(data->cellular.connect);
+			gtk_widget_show(data->cellular.disconnect);
+		}
+
 	} else if (type == CONNMAN_TYPE_LABEL_ETHERNET) {
 		if (!data->ethernet_button)
 			return;
@@ -92,6 +117,13 @@ static void status_update(GtkTreeModel *model, GtkTreePath  *path,
 			gtk_button_set_label(GTK_BUTTON(data->wifi_button), _("Enable"));
 			gtk_widget_set_sensitive(data->scan_button, 0);
 		}
+	} else if (type == CONNMAN_TYPE_LABEL_CELLULAR) {
+		if (!data->cellular_button)
+			return;
+		if (cellular_enabled)
+			gtk_button_set_label(GTK_BUTTON(data->cellular_button), _("Disable"));
+		else
+			gtk_button_set_label(GTK_BUTTON(data->cellular_button), _("Enable"));
 	} else if (type == CONNMAN_TYPE_SYSCONFIG) {
 		if (!data->offline_button)
 			return;
@@ -100,7 +132,6 @@ static void status_update(GtkTreeModel *model, GtkTreePath  *path,
 		else
 			gtk_button_set_label(GTK_BUTTON(data->offline_button), _("OfflineMode"));
 	}
-
 }
 
 static void set_offline_callback(GtkWidget *button, gpointer user_data)
@@ -207,11 +238,17 @@ static struct config_data *create_config(GtkTreeModel *model,
 	case CONNMAN_TYPE_WIFI:
 		add_wifi_service(mainbox, iter, data);
 		break;
+	case CONNMAN_TYPE_CELLULAR:
+		add_cellular_service(mainbox, iter, data);
+		break;
 	case CONNMAN_TYPE_LABEL_ETHERNET:
 		add_ethernet_switch_button(mainbox, iter, data);
 		break;
 	case CONNMAN_TYPE_LABEL_WIFI:
 		add_wifi_switch_button(mainbox, iter, data);
+		break;
+	case CONNMAN_TYPE_LABEL_CELLULAR:
+		add_cellular_switch_button(mainbox, iter, data);
 		break;
 	case CONNMAN_TYPE_SYSCONFIG:
 		add_system_config(mainbox, iter, data);
@@ -295,6 +332,7 @@ static void device_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 		markup = g_strdup_printf("  %s\n", title);
 		break;
 	case CONNMAN_TYPE_WIFI:
+	case CONNMAN_TYPE_CELLULAR:
 		/* Show the AP name */
 		title = N_(name);
 		if (g_str_equal(state, "association") == TRUE)
@@ -322,6 +360,10 @@ static void device_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 		break;
 	case CONNMAN_TYPE_LABEL_WIFI:
 		title = N_("Wireless Networks");
+		markup = g_strdup_printf("<b>\n%s\n</b>", title);
+		break;
+	case CONNMAN_TYPE_LABEL_CELLULAR:
+		title = N_("Cellular Networks");
 		markup = g_strdup_printf("<b>\n%s\n</b>", title);
 		break;
 	case CONNMAN_TYPE_SYSCONFIG:
@@ -360,6 +402,10 @@ static void type_to_icon(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 		break;
 	case CONNMAN_TYPE_LABEL_WIFI:
 		g_object_set(cell, "icon-name", "network-wireless",
+						"stock-size", 4, NULL);
+		break;
+	case CONNMAN_TYPE_LABEL_CELLULAR:
+		g_object_set(cell, "icon-name", "network-cellular",
 						"stock-size", 4, NULL);
 		break;
 	default:

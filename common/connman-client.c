@@ -112,9 +112,10 @@ static void connman_client_init(ConnmanClient *client)
 				G_TYPE_STRING,  /* address */
 				G_TYPE_STRING,  /* netmask */
 				G_TYPE_STRING,  /* gateway */
-				G_TYPE_BOOLEAN, /* gateway */
-				G_TYPE_BOOLEAN, /* gateway */
-				G_TYPE_BOOLEAN);/* gateway */
+				G_TYPE_BOOLEAN, /* ethernet enabled */
+				G_TYPE_BOOLEAN, /* wifi enabled */
+				G_TYPE_BOOLEAN, /* cellular enabled */
+				G_TYPE_BOOLEAN);/* offline */
 
 	g_object_set_data(G_OBJECT(priv->store),
 					"State", g_strdup("unavailable"));
@@ -218,6 +219,7 @@ static gboolean device_filter(GtkTreeModel *model,
 	switch (type) {
 	case CONNMAN_TYPE_LABEL_ETHERNET:
 	case CONNMAN_TYPE_LABEL_WIFI:
+	case CONNMAN_TYPE_LABEL_CELLULAR:
 	case CONNMAN_TYPE_SYSCONFIG:
 		return TRUE;
 	}
