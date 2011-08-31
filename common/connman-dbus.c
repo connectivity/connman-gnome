@@ -384,7 +384,8 @@ static void service_changed(DBusGProxy *proxy, const char *property,
 		gtk_tree_store_set(store, &iter,
 					CONNMAN_COLUMN_FAVORITE, favorite, -1);
 	} else if (g_str_equal(property, "Security") == TRUE) {
-		const char *security = value ? g_value_get_string(value) : NULL;
+		char **array = value ? g_value_get_boxed(value) : NULL;
+		const char *security = g_strjoinv(" ", array);
 		gtk_tree_store_set(store, &iter,
 					CONNMAN_COLUMN_SECURITY, security,
 					-1);
@@ -487,7 +488,7 @@ static void service_properties(DBusGProxy *proxy, GHashTable *hash,
 	strength = value ? g_value_get_uchar(value) : 0;
 
 	value = g_hash_table_lookup(hash, "Security");
-	security = value ? g_value_get_string(value) : NULL;
+	security = value ? g_strjoinv(" ", g_value_get_boxed(value)) : NULL;
 
 	value = g_hash_table_lookup(hash, "PassPhrase");
 	passphrase = value ? g_value_get_string(value) : NULL;
