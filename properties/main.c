@@ -497,8 +497,6 @@ static GtkWidget *create_window(void)
 
 int main(int argc, char *argv[])
 {
-	GtkWidget *window;
-
 	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
 	bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
 	textdomain(GETTEXT_PACKAGE);
@@ -511,7 +509,7 @@ int main(int argc, char *argv[])
 
 	client = connman_client_new();
 
-	window = create_window();
+	create_window();
 
 	gtk_main();
 

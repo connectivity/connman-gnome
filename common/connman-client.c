@@ -604,7 +604,6 @@ void connman_client_enable_technology(ConnmanClient *client, const char *network
 {
 	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
 	DBusGProxy *proxy;
-	int ret;
 
 	if (network== NULL)
 		return;
@@ -613,7 +612,7 @@ void connman_client_enable_technology(ConnmanClient *client, const char *network
 	if (proxy == NULL)
 		return;
 
-	ret = connman_enable_technology(proxy, technology, NULL);
+	connman_enable_technology(proxy, technology, NULL);
 
 	g_object_unref(proxy);
 }
@@ -623,7 +622,6 @@ void connman_client_disable_technology(ConnmanClient *client, const char *networ
 {
 	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
 	DBusGProxy *proxy;
-	int ret;
 
 	if (network == NULL)
 		return;
@@ -632,7 +630,7 @@ void connman_client_disable_technology(ConnmanClient *client, const char *networ
 	if (proxy == NULL)
 		return;
 
-	ret = connman_disable_technology(proxy, technology, NULL);
+	connman_disable_technology(proxy, technology, NULL);
 
 	g_object_unref(proxy);
 }
