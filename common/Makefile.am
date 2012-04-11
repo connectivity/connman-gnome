@@ -1,7 +1,7 @@
 
 noinst_LIBRARIES = libcommon.a
 
-libcommon_a_SOURCES = connman-dbus.c connman-dbus.h \
+libcommon_a_SOURCES = connman-dbus.c connman-dbus.h connman-dbus-glue.h \
 				connman-client.h connman-client.c \
 							instance.h instance.c
 
