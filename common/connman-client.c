@@ -39,6 +39,11 @@
 #define CONNMAN_CLIENT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), \
 				CONNMAN_TYPE_CLIENT, ConnmanClientPrivate))
 
+#ifndef DBUS_TYPE_G_DICTIONARY
+#define DBUS_TYPE_G_DICTIONARY \
+	(dbus_g_type_get_map("GHashTable", G_TYPE_STRING, G_TYPE_VALUE))
+#endif
+
 typedef struct _ConnmanClientPrivate ConnmanClientPrivate;
 
 struct _ConnmanClientPrivate {
@@ -248,6 +253,16 @@ GtkTreeModel *connman_client_get_device_model(ConnmanClient *client)
 	return model;
 }
 
+void hash_table_value_string_insert( GHashTable *hash, gpointer key, const char *str )
+{
+	GValue *itemvalue;
+
+	itemvalue = g_slice_new0(GValue);
+	g_value_init(itemvalue, G_TYPE_STRING);
+	g_value_set_string(itemvalue, str);
+	g_hash_table_insert(hash, key, itemvalue);
+}
+
 gboolean connman_client_set_ipv4(ConnmanClient *client, const gchar *device,
 				struct ipv4_config *ipv4_config)
 {
@@ -255,12 +270,7 @@ gboolean connman_client_set_ipv4(ConnmanClient *client, const gchar *device,
 	DBusGProxy *proxy;
 	GValue value = { 0 };
 	gboolean ret;
-	GHashTable *ipv4 = g_hash_table_new(g_str_hash, g_str_equal);
-
-	g_hash_table_insert(ipv4, "Method",  (gpointer)ipv4_config->method);
-	g_hash_table_insert(ipv4, "Address", (gpointer)ipv4_config->address);
-	g_hash_table_insert(ipv4, "Netmask", (gpointer)ipv4_config->netmask);
-	g_hash_table_insert(ipv4, "Gateway", (gpointer)ipv4_config->gateway);
+	GHashTable *ipv4 = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, g_free);
 
 	DBG("client %p", client);
 
@@ -270,7 +280,15 @@ gboolean connman_client_set_ipv4(ConnmanClient *client, const gchar *device,
 	proxy = connman_dbus_get_proxy(priv->store, device);
 	if (proxy == NULL)
 		return FALSE;
-	g_value_init(&value, DBUS_TYPE_G_STRING_STRING_HASHTABLE);
+
+	hash_table_value_string_insert(ipv4, "Method", ipv4_config->method);
+	if( g_strcmp0(ipv4_config->method, "dhcp" ) != 0 ) {
+		hash_table_value_string_insert(ipv4, "Address", ipv4_config->address);
+		hash_table_value_string_insert(ipv4, "Netmask", ipv4_config->netmask);
+		hash_table_value_string_insert(ipv4, "Gateway", ipv4_config->gateway);
+	}
+
+	g_value_init(&value, DBUS_TYPE_G_DICTIONARY);
 	g_value_set_boxed(&value, ipv4);
 	ret = connman_set_property(proxy, "IPv4.Configuration", &value, NULL);
 
