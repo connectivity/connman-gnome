@@ -111,6 +111,16 @@ static void manager_property_changed(DBusGProxy *proxy, const char *property,
 						iterate_list, &path);
 		update_service(proxy, path);
 		g_free(path);
+	} else if (g_str_equal(property, "State") == TRUE) {
+		const gchar *state = g_value_get_string(value);
+
+		if (g_strcmp0(state, "ready") == 0 || g_strcmp0(state, "online") == 0) {
+			global_ready = TRUE;
+			status_ready(global_strength);
+		} else {
+			global_ready = FALSE;
+			status_offline();
+		}
 	}
 }
 
