@@ -332,12 +332,12 @@ static void device_to_text(GtkTreeViewColumn *column, GtkCellRenderer *cell,
 		/* Show the AP name */
 		title = N_(name);
 		if (g_str_equal(state, "association") == TRUE)
-			state = "associating...";
+			state = _("associating...");
 		else if (g_str_equal(state, "configuration") == TRUE)
-			state = "configurating...";
+			state = _("configuring...");
 		else if (g_str_equal(state, "ready") == TRUE ||
 				g_str_equal(state, "online") == TRUE)
-			state = "connnected";
+			state = _("connected");
 		else
 			state = "";
 		markup = g_strdup_printf("  %s\n  %s", title, state);
