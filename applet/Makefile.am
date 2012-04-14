@@ -2,7 +2,8 @@
 bin_PROGRAMS = connman-applet
 
 connman_applet_SOURCES = main.c \
-	properties.h properties.c status.h status.c
+	properties.h properties.c status.h \
+	status.c agent.h agent.c
 
 connman_applet_LDADD = $(top_builddir)/common/libcommon.a \
 					@GTK_LIBS@ @DBUS_LIBS@

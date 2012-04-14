@@ -32,6 +32,7 @@
 
 #include "properties.h"
 #include "status.h"
+#include "agent.h"
 
 static gboolean global_ready = FALSE;
 static gint global_strength = -1;
@@ -132,6 +133,7 @@ static void manager_init(DBusGConnection *connection)
 					"/", "net.connman.Manager");
 
 	properties_create(manager, manager_property_changed, NULL);
+	setup_agents();
 }
 
 static void manager_cleanup(void)
@@ -148,6 +150,7 @@ static void name_owner_changed(DBusGProxy *proxy, const char *name,
 	if (*new != '\0') {
 		status_offline();
 		properties_enable(manager);
+		setup_agents();
 	} else {
 		properties_disable(manager);
 		status_unavailable();
