@@ -57,17 +57,6 @@ static void connect_callback(GtkWidget *editable, gpointer user_data)
 	gboolean ret;
 	gint active;
 
-	if (data->wifi.passphrase) {
-		char *passphrase;
-		passphrase = (gchar *)gtk_entry_get_text(GTK_ENTRY(data->wifi.passphrase));
-		ret = connman_client_set_passphrase(data->client, data->device,
-				passphrase);
-
-		if (ret == FALSE) {
-			return;
-		}
-	}
-
 	active = gtk_combo_box_get_active(GTK_COMBO_BOX(data->policy.config));
 	data->ipv4_config.method = active ? "manual" : "dhcp";
 	data->ipv4_config.address = active ? gtk_entry_get_text(GTK_ENTRY(data->ipv4.entry[0])) : NULL;
@@ -250,22 +239,11 @@ static void wifi_ipconfig(GtkWidget *table, struct config_data *data, GtkTreeIte
 			G_CALLBACK(changed_callback), data);
 }
 
-static void toggled_callback(GtkWidget *button, gpointer user_data)
-{
-	GtkWidget *entry = user_data;
-	gboolean mode;
-
-	mode = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button));
-
-	gtk_entry_set_visibility(GTK_ENTRY(entry), mode);
-}
-
 void add_wifi_service(GtkWidget *mainbox, GtkTreeIter *iter, struct config_data *data)
 {
 	GtkWidget *vbox;
 	GtkWidget *table;
 	GtkWidget *label;
-	GtkWidget *entry;
 	GtkWidget *button;
 
 	const char *name, *security, *icon, *state;
@@ -307,32 +285,6 @@ void add_wifi_service(GtkWidget *mainbox, GtkTreeIter *iter, struct config_data 
 	gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_LEFT);
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
 	data->wifi.security = label;
-
-	label = gtk_label_new(_("Passphrase:"));
-	gtk_table_attach_defaults(GTK_TABLE(table), label, 1, 2, 2, 3);
-
-	if (g_str_equal(security, "none") != TRUE &&
-			g_str_equal(security, "unknown") != TRUE) {
-		entry = gtk_entry_new();
-		gtk_entry_set_max_length (GTK_ENTRY (entry), 64);
-		gtk_table_attach_defaults(GTK_TABLE(table), entry, 2, 4, 2, 3);
-		gtk_entry_set_visibility(GTK_ENTRY(entry), 0);
-		data->wifi.passphrase = entry;
-
-		button = gtk_check_button_new_with_label(_("Show input"));
-		gtk_table_attach_defaults(GTK_TABLE(table), button, 4, 5, 2, 3);
-
-		g_signal_connect(G_OBJECT(button), "toggled",
-				G_CALLBACK(toggled_callback), entry);
-
-
-	} else {
-		label = gtk_label_new(_("none"));
-		gtk_table_attach_defaults(GTK_TABLE(table), label, 2, 4, 2, 3);
-		gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_LEFT);
-		gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
-		data->wifi.passphrase = NULL;
-	}
 
 	label = gtk_label_new(_(""));
 	gtk_table_attach_defaults(GTK_TABLE(table), label, 2, 3, 8, 9);

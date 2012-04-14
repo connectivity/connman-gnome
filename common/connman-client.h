@@ -77,9 +77,6 @@ void connman_client_disconnect(ConnmanClient *client, const gchar *network);
 gchar *connman_client_get_security(ConnmanClient *client, const gchar *network);
 void connman_client_connect_async(ConnmanClient *client, const gchar *network,
 				connman_connect_reply callback, gpointer userdata);
-gchar *connman_client_get_passphrase(ConnmanClient *client, const gchar *network);
-gboolean connman_client_set_passphrase(ConnmanClient *client, const gchar *network,
-						const gchar *passphrase);
 void connman_client_set_remember(ConnmanClient *client, const gchar *network,
 							gboolean remember);
 
@@ -108,7 +105,6 @@ enum {
 	CONNMAN_COLUMN_FAVORITE,	/* G_TYPE_BOOLEAN */
 	CONNMAN_COLUMN_STRENGTH,	/* G_TYPE_UINT    */
 	CONNMAN_COLUMN_SECURITY,	/* G_TYPE_STRING  */
-	CONNMAN_COLUMN_PASSPHRASE,	/* G_TYPE_STRING  */
 	CONNMAN_COLUMN_METHOD,		/* G_TYPE_STRING  */
 	CONNMAN_COLUMN_ADDRESS,		/* G_TYPE_STRING  */
 	CONNMAN_COLUMN_NETMASK,		/* G_TYPE_STRING  */

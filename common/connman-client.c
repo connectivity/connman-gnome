@@ -112,7 +112,6 @@ static void connman_client_init(ConnmanClient *client)
 				G_TYPE_BOOLEAN,	/* favorite */
 				G_TYPE_UINT,	/* strength */
 				G_TYPE_STRING,	/* security */
-				G_TYPE_STRING,  /* passphrase */
 				G_TYPE_STRING,  /* method */
 				G_TYPE_STRING,  /* address */
 				G_TYPE_STRING,  /* netmask */
@@ -499,56 +498,6 @@ gchar *connman_client_get_security(ConnmanClient *client, const gchar *network)
 				CONNMAN_COLUMN_SECURITY, &security, -1);
 
 	return security;
-}
-
-gchar *connman_client_get_passphrase(ConnmanClient *client, const gchar *network)
-{
-	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
-	GtkTreeIter iter;
-	gchar *passphrase;
-
-	DBG("client %p", client);
-
-	if (network == NULL)
-		return NULL;
-
-	if (connman_dbus_get_iter(priv->store, network, &iter) == FALSE)
-		return NULL;
-
-	gtk_tree_model_get(GTK_TREE_MODEL(priv->store), &iter,
-				CONNMAN_COLUMN_PASSPHRASE, &passphrase, -1);
-
-	return passphrase;
-}
-
-gboolean connman_client_set_passphrase(ConnmanClient *client, const gchar *network,
-						const gchar *passphrase)
-{
-	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
-	DBusGProxy *proxy;
-	GValue value = { 0 };
-	gboolean ret = FALSE;
-
-	DBG("client %p", client);
-
-	if (network == NULL)
-		goto done;
-
-	proxy = connman_dbus_get_proxy(priv->store, network);
-	if (proxy == NULL)
-		goto done;
-
-	g_value_init(&value, G_TYPE_STRING);
-	g_value_set_string(&value, passphrase);
-
-	ret = connman_set_property(proxy, "Passphrase", &value, NULL);
-
-	g_value_unset(&value);
-
-	g_object_unref(proxy);
-
-done:
-	return ret;
 }
 
 void connman_client_set_callback(ConnmanClient *client,

@@ -53,7 +53,6 @@ struct config_data {
 		GtkWidget *name;
 		GtkWidget *security;
 		GtkWidget *strength;
-		GtkWidget *passphrase;
 		GtkWidget *connect_info;
 		GtkWidget *connect;
 		GtkWidget *disconnect;
