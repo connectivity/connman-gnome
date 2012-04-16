@@ -535,7 +535,7 @@ static void manager_properties(DBusGProxy *proxy, GHashTable *hash,
 static void manager_services(DBusGProxy *proxy, GPtrArray *array,
 					GError *error, gpointer user_data)
 {
-	int i;
+	unsigned int i;
 
 	DBG("proxy %p array %p", proxy, array);
 
@@ -544,6 +544,7 @@ static void manager_services(DBusGProxy *proxy, GPtrArray *array,
 
 	for (i = 0; i < array->len; i++)
 	{
+		GHashTable *props;
 		GValueArray *item = g_ptr_array_index(array, i);
 
 		DBusGObjectPath *path = (DBusGObjectPath *)g_value_get_boxed(g_value_array_get_nth(item, 0));
@@ -553,7 +554,7 @@ static void manager_services(DBusGProxy *proxy, GPtrArray *array,
 		if (service_proxy == NULL)
 			continue;
 
-		GHashTable *props = (GHashTable *)g_value_get_boxed(g_value_array_get_nth(item, 1));
+		props = (GHashTable *)g_value_get_boxed(g_value_array_get_nth(item, 1));
 		service_properties(service_proxy, props, user_data);
 	}
 }
@@ -561,7 +562,7 @@ static void manager_services(DBusGProxy *proxy, GPtrArray *array,
 static void manager_technologies(DBusGProxy *proxy, GPtrArray *array,
 					GError *error, gpointer user_data)
 {
-	int i;
+	unsigned int i;
 
 	DBG("proxy %p array %p", proxy, array);
 
@@ -592,7 +593,7 @@ static void services_removed(DBusGProxy *proxy, GPtrArray *array,
 {
 	GtkTreeStore *store = user_data;
 	GtkTreeIter iter;
-	int i;
+	unsigned int i;
 
 	DBG("store %p proxy %p array %p", store, proxy, array);
 

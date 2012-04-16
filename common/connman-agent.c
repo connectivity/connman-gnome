@@ -52,22 +52,6 @@ static GQuark agent_error_quark(void)
 
 #define ENUM_ENTRY(NAME, DESC) { NAME, "" #NAME "", DESC }
 
-static GType agent_error_get_type(void)
-{
-	static GType etype = 0;
-	if (etype == 0) {
-		static const GEnumValue values[] = {
-			ENUM_ENTRY(AGENT_ERROR_REJECT, "Rejected"),
-			ENUM_ENTRY(AGENT_ERROR_RETRY, "Retry"),
-			{ 0, 0, 0 }
-		};
-
-		etype = g_enum_register_static("Agent", values);
-	}
-
-	return etype;
-}
-
 typedef struct _ConnmanAgentPrivate ConnmanAgentPrivate;
 
 typedef struct _PendingRequest PendingRequest;
@@ -146,23 +130,11 @@ gboolean connman_agent_request_input_abort(gpointer request_data)
 	return FALSE;
 }
 
-static gboolean connman_agent_request_input_cb(const GHashTable *reply, gpointer user_data)
-{
-
-	PendingRequest *pendingrequest = user_data;
-
-	dbus_g_method_return(pendingrequest->context, reply);
-
-	g_free(pendingrequest);
-	return FALSE;
-}
-
-gboolean connman_agent_report_error(ConnmanAgent *agent,
-                                    const char *path, const char *error,
-                                    DBusGMethodInvocation *context)
+static gboolean connman_agent_report_error(ConnmanAgent *agent,
+					   const char *path, const char *error,
+					   DBusGMethodInvocation *context)
 {
 	GError *result;
-	ConnmanAgentPrivate *priv = CONNMAN_AGENT_GET_PRIVATE(agent);
 
 	debug(agent, "connection %s, reports an error: %s", path, error);
 	result = g_error_new(AGENT_ERROR, AGENT_ERROR_RETRY,
@@ -173,13 +145,12 @@ gboolean connman_agent_report_error(ConnmanAgent *agent,
 	return FALSE;
 }
 
-gboolean connman_agent_request_input(ConnmanAgent *agent,
-                                     const char *path, GHashTable *fields,
-                                     DBusGMethodInvocation *context)
+static gboolean connman_agent_request_input(ConnmanAgent *agent,
+					    const char *path, GHashTable *fields,
+					    DBusGMethodInvocation *context)
 {
 	ConnmanAgentPrivate *priv = CONNMAN_AGENT_GET_PRIVATE(agent);
 	const char *sender = dbus_g_method_get_sender(context);
-	char *name = NULL, *type = NULL;
 	char **id = NULL;
 	PendingRequest *pendingrequest = NULL;
 
@@ -202,8 +173,8 @@ gboolean connman_agent_request_input(ConnmanAgent *agent,
 	return FALSE;
 }
 
-gboolean connman_agent_cancel(ConnmanAgent *agent,
-                              DBusGMethodInvocation *context)
+static gboolean connman_agent_cancel(ConnmanAgent *agent,
+				     DBusGMethodInvocation *context)
 {
 	ConnmanAgentPrivate *priv = CONNMAN_AGENT_GET_PRIVATE(agent);
 	const char *sender = dbus_g_method_get_sender(context);
@@ -220,8 +191,8 @@ gboolean connman_agent_cancel(ConnmanAgent *agent,
 	return result;
 }
 
-gboolean connman_agent_release(ConnmanAgent *agent,
-                               DBusGMethodInvocation *context)
+static gboolean connman_agent_release(ConnmanAgent *agent,
+				      DBusGMethodInvocation *context)
 {
 	ConnmanAgentPrivate *priv = CONNMAN_AGENT_GET_PRIVATE(agent);
 	const char *sender = dbus_g_method_get_sender(context);
@@ -323,10 +294,8 @@ gboolean connman_agent_setup(ConnmanAgent *agent, const char *path)
 gboolean connman_agent_register(ConnmanAgent *agent)
 {
 	ConnmanAgentPrivate *priv = CONNMAN_AGENT_GET_PRIVATE(agent);
-	DBusGProxy *proxy;
 	GObject *object;
 	GError *error = NULL;
-	gchar *path;
 
 	debug(agent, "register agent %p", agent);
 
@@ -406,21 +375,4 @@ void connman_agent_set_cancel_func(ConnmanAgent *agent,
 
 	priv->cancel_func = func;
 	priv->cancel_data = data;
-}
-
-void connman_agent_set_release_func(ConnmanAgent *agent,
-                                    ConnmanAgentReleaseFunc func, gpointer data)
-{
-	ConnmanAgentPrivate *priv = CONNMAN_AGENT_GET_PRIVATE(agent);
-
-	priv->release_func = func;
-	priv->release_data = data;
-}
-
-void connman_agent_set_debug_func(ConnmanAgent *agent, ConnmanAgentDebugFunc func, gpointer data)
-{
-	ConnmanAgentPrivate *priv = CONNMAN_AGENT_GET_PRIVATE(agent);
-
-	priv->debug_func = func;
-	priv->debug_data = data;
 }

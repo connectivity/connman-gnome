@@ -252,7 +252,7 @@ GtkTreeModel *connman_client_get_device_model(ConnmanClient *client)
 	return model;
 }
 
-void hash_table_value_string_insert( GHashTable *hash, gpointer key, const char *str )
+static void hash_table_value_string_insert( GHashTable *hash, gpointer key, const char *str )
 {
 	GValue *itemvalue;
 
@@ -301,6 +301,7 @@ void connman_client_set_powered(ConnmanClient *client, const gchar *device,
 {
 	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
 	DBusGProxy *proxy;
+	GError *error;
 	GValue value = { 0 };
 
 	DBG("client %p device %s", client, device);
@@ -315,8 +316,8 @@ void connman_client_set_powered(ConnmanClient *client, const gchar *device,
 	g_value_init(&value, G_TYPE_BOOLEAN);
 	g_value_set_boolean(&value, powered);
 
-	GError *error = NULL;
-	gboolean ret = connman_set_property(proxy, "Powered", &value, &error);
+	error = NULL;
+	connman_set_property(proxy, "Powered", &value, &error);
 	if( error )
 		fprintf (stderr, "error: %s\n", error->message);
 
