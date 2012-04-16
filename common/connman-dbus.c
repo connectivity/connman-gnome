@@ -437,7 +437,7 @@ static void service_properties(DBusGProxy *proxy, GHashTable *hash,
 	DBG("name %s type %d icon %s", name, type, icon);
 
 	value = g_hash_table_lookup(hash, "IPv4.Configuration");
-	ipv4 = g_value_get_boxed (value);
+	ipv4 = value ? g_value_get_boxed (value) : NULL;
 
 	if (!ipv4)
 		goto done;
