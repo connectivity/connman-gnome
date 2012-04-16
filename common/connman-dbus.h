@@ -32,6 +32,7 @@
 
 #define CONNMAN_PROFILE_INTERFACE	CONNMAN_SERVICE ".Profile"
 #define CONNMAN_SERVICE_INTERFACE	CONNMAN_SERVICE ".Service"
+#define CONNMAN_TECHNOLOGY_INTERFACE	CONNMAN_SERVICE ".Technology"
 
 DBusGProxy *connman_dbus_create_manager(DBusGConnection *connection,
 							GtkTreeStore *store);

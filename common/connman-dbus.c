@@ -28,6 +28,8 @@
 #include "connman-dbus.h"
 #include "connman-dbus-glue.h"
 
+#include "marshal.h"
+
 #ifdef DEBUG
 #define DBG(fmt, arg...) printf("%s:%s() " fmt "\n", __FILE__, __FUNCTION__ , ## arg)
 #else
@@ -164,22 +166,6 @@ gboolean connman_dbus_get_iter(GtkTreeStore *store, const gchar *path,
 	return get_iter_from_path(store, iter, path);
 }
 
-static void iterate_list(const GValue *value, gpointer user_data)
-{
-	GSList **list = user_data;
-	gchar *path = g_value_dup_boxed(value);
-
-	if (path == NULL)
-		return;
-
-	*list = g_slist_append(*list, path);
-}
-
-static gint compare_path(gconstpointer a, gconstpointer b)
-{
-	return g_strcmp0(a, b);
-}
-
 static guint get_type(const GValue *value)
 {
 	const char *type = value ? g_value_get_string(value) : NULL;
@@ -217,95 +203,76 @@ static const gchar *type2icon(guint type)
 	return NULL;
 }
 
-static void enabled_technologies_changed(GtkTreeStore *store, GValue *value)
+static void tech_changed(DBusGProxy *proxy, const char *property,
+					GValue *value, gpointer user_data)
 {
+	GtkTreeStore *store = user_data;
+	const char *path = dbus_g_proxy_get_path(proxy);
 	GtkTreeIter iter;
-	gboolean ethernet_enabled_prev, ethernet_enabled = FALSE;
-	gboolean wifi_enabled_prev, wifi_enabled = FALSE;
-	gboolean cellular_enabled_prev, cellular_enabled = FALSE;
-	gchar **tech = g_value_get_boxed (value);
-	guint i;
 
-	if (value == NULL)
+	DBG("store %p proxy %p property %s", store, proxy, property);
+
+	if (property == NULL || value == NULL)
 		return;
 
-	for (i = 0; i < g_strv_length(tech); i++) {
-		DBG("technology: %s", *(tech+i));
-		if (g_str_equal("ethernet", *(tech + i)))
-			ethernet_enabled = TRUE;
-		else if (g_str_equal ("wifi", *(tech + i)))
-			wifi_enabled = TRUE;
-		else if (g_str_equal ("cellular", *(tech + i)))
-			cellular_enabled = TRUE;
+	if (get_iter_from_path(store, &iter, path) == FALSE)
+		return;
+
+	if (g_str_equal(property, "Powered") == TRUE) {
+		gboolean powered = g_value_get_boolean(value);
+		gtk_tree_store_set(store, &iter,
+					CONNMAN_COLUMN_POWERED, powered, -1);
 	}
-
-	get_iter_from_type(store, &iter, CONNMAN_TYPE_LABEL_ETHERNET);
-	gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
-			CONNMAN_COLUMN_ETHERNET_ENABLED, &ethernet_enabled_prev, -1);
-	if (ethernet_enabled_prev != ethernet_enabled)
-		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_ETHERNET_ENABLED, ethernet_enabled, -1);
-
-	get_iter_from_type(store, &iter, CONNMAN_TYPE_LABEL_WIFI);
-	gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
-			CONNMAN_COLUMN_WIFI_ENABLED, &wifi_enabled_prev, -1);
-	if (wifi_enabled_prev != wifi_enabled)
-		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_WIFI_ENABLED, wifi_enabled, -1);
-
-	get_iter_from_type(store, &iter, CONNMAN_TYPE_LABEL_CELLULAR);
-	gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
-			CONNMAN_COLUMN_CELLULAR_ENABLED, &cellular_enabled_prev, -1);
-	if (cellular_enabled_prev != cellular_enabled)
-		gtk_tree_store_set(store, &iter,
-					CONNMAN_COLUMN_CELLULAR_ENABLED, cellular_enabled, -1);
 }
 
-static void enabled_technologies_properties(GtkTreeStore *store, DBusGProxy *proxy, GValue *value)
+static void tech_properties(DBusGProxy *proxy, GHashTable *hash,
+					GError *error, gpointer user_data)
 {
+	GtkTreeStore *store = user_data;
 	GtkTreeIter iter;
-	gboolean ethernet_enabled = FALSE;
-	gboolean wifi_enabled = FALSE;
-	gboolean cellular_enabled = FALSE;
-	gchar **tech = g_value_get_boxed (value);
-	guint i;
+	gboolean powered = FALSE;
+	GValue *propval = 0;
+	const char *techtype = 0;
 
-	for (i = 0; i < g_strv_length (tech); i++) {
-		DBG("technology: %s", *(tech+i));
-		if (g_str_equal("ethernet", *(tech + i)))
-			ethernet_enabled = TRUE;
-		else if (g_str_equal ("wifi", *(tech + i)))
-			wifi_enabled = TRUE;
-		else if (g_str_equal ("cellular", *(tech + i)))
-			cellular_enabled = TRUE;
+	propval = g_hash_table_lookup(hash, "Type");
+	techtype = propval ? g_value_get_string(propval) : NULL;
+
+	propval = g_hash_table_lookup(hash, "Powered");
+	powered = propval ? g_value_get_boolean(propval) : FALSE;
+
+	if (g_str_equal("ethernet", techtype))
+	{
+		if (get_iter_from_type(store, &iter, CONNMAN_TYPE_LABEL_ETHERNET) == FALSE)
+			gtk_tree_store_append(store, &iter, NULL);
+
+		gtk_tree_store_set(store, &iter,
+				CONNMAN_COLUMN_PROXY, proxy,
+				CONNMAN_COLUMN_POWERED, powered,
+				CONNMAN_COLUMN_TYPE, CONNMAN_TYPE_LABEL_ETHERNET,
+				-1);
 	}
+	else if (g_str_equal ("wifi", techtype))
+	{
+		if (get_iter_from_type(store, &iter, CONNMAN_TYPE_LABEL_WIFI) == FALSE)
+			gtk_tree_store_append(store, &iter, NULL);
 
-	if (get_iter_from_type(store, &iter, CONNMAN_TYPE_LABEL_ETHERNET) == FALSE)
-		gtk_tree_store_append(store, &iter, NULL);
+		gtk_tree_store_set(store, &iter,
+				CONNMAN_COLUMN_PROXY, proxy,
+				CONNMAN_COLUMN_POWERED, powered,
+				CONNMAN_COLUMN_TYPE, CONNMAN_TYPE_LABEL_WIFI,
+				-1);
+	}
+	else if (g_str_equal ("3g", techtype))
+	{
+		if (get_iter_from_type(store, &iter, CONNMAN_TYPE_LABEL_CELLULAR) == FALSE)
+			gtk_tree_store_append(store, &iter, NULL);
 
-	gtk_tree_store_set(store, &iter,
-			CONNMAN_COLUMN_PROXY, proxy,
-			CONNMAN_COLUMN_ETHERNET_ENABLED, ethernet_enabled,
-			CONNMAN_COLUMN_TYPE, CONNMAN_TYPE_LABEL_ETHERNET,
-			-1);
-
-	if (get_iter_from_type(store, &iter, CONNMAN_TYPE_LABEL_WIFI) == FALSE)
-		gtk_tree_store_append(store, &iter, NULL);
-
-	gtk_tree_store_set(store, &iter,
-			CONNMAN_COLUMN_PROXY, proxy,
-			CONNMAN_COLUMN_WIFI_ENABLED, wifi_enabled,
-			CONNMAN_COLUMN_TYPE, CONNMAN_TYPE_LABEL_WIFI,
-			-1);
-
-	if (get_iter_from_type(store, &iter, CONNMAN_TYPE_LABEL_CELLULAR) == FALSE)
-		gtk_tree_store_append(store, &iter, NULL);
-
-	gtk_tree_store_set(store, &iter,
-			CONNMAN_COLUMN_PROXY, proxy,
-			CONNMAN_COLUMN_CELLULAR_ENABLED, cellular_enabled,
-			CONNMAN_COLUMN_TYPE, CONNMAN_TYPE_LABEL_CELLULAR,
-			-1);
+		gtk_tree_store_set(store, &iter,
+				CONNMAN_COLUMN_PROXY, proxy,
+				CONNMAN_COLUMN_POWERED, powered,
+				CONNMAN_COLUMN_TYPE, CONNMAN_TYPE_LABEL_CELLULAR,
+				-1);
+	}
 }
 
 static void offline_mode_changed(GtkTreeStore *store, GValue *value)
@@ -317,6 +284,39 @@ static void offline_mode_changed(GtkTreeStore *store, GValue *value)
 	gtk_tree_store_set(store, &iter,
 			CONNMAN_COLUMN_OFFLINEMODE, offline_mode,
 			-1);
+}
+
+static void tech_added(DBusGProxy *proxy, DBusGObjectPath *path,
+					GHashTable *hash, gpointer user_data)
+{
+	GtkTreeStore *store = user_data;
+	GtkTreeIter iter;
+	DBG("store %p proxy %p hash %p", store, proxy, hash);
+
+	if (!get_iter_from_path(store, &iter, path)) {
+		DBusGProxy *tech_proxy = dbus_g_proxy_new_for_name(connection,
+						CONNMAN_SERVICE, path,
+						CONNMAN_TECHNOLOGY_INTERFACE);
+		if (tech_proxy == NULL)
+			return;
+
+		tech_properties(tech_proxy, hash, NULL, user_data);
+
+		dbus_g_proxy_add_signal(tech_proxy, "PropertyChanged",
+				G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
+		dbus_g_proxy_connect_signal(tech_proxy, "PropertyChanged",
+				G_CALLBACK(tech_changed), store, NULL);
+	}
+}
+
+static void tech_removed(DBusGProxy *proxy, DBusGObjectPath *path,
+					gpointer user_data)
+{
+	GtkTreeStore *store = user_data;
+	GtkTreeIter iter;
+
+	if (get_iter_from_path(store, &iter, path))
+		gtk_tree_store_remove(store, &iter);
 }
 
 static void offline_mode_properties(GtkTreeStore *store, DBusGProxy *proxy, GValue *value)
@@ -401,59 +401,8 @@ static void service_changed(DBusGProxy *proxy, const char *property,
 	}
 }
 
-static void property_update(GtkTreeStore *store, const GValue *value,
-					connman_get_properties_reply callback)
-{
-	GSList *list, *link, *old_list, *new_list = NULL;
-
-	DBG("store %p", store);
-
-	old_list = g_object_get_data(G_OBJECT(store), "Services");
-
-	dbus_g_type_collection_value_iterate(value, iterate_list, &new_list);
-
-	g_object_set_data(G_OBJECT(store), "Services", new_list);
-
-	for (list = new_list; list; list = list->next) {
-		gchar *path = list->data;
-		DBusGProxy *proxy;
-
-		DBG("new path %s", path);
-
-		link = g_slist_find_custom(old_list, path, compare_path);
-		if (link != NULL) {
-			g_free(link->data);
-			old_list = g_slist_delete_link(old_list, link);
-		}
-
-		proxy = dbus_g_proxy_new_for_name(connection,
-						CONNMAN_SERVICE, path,
-						CONNMAN_SERVICE_INTERFACE);
-		if (proxy == NULL)
-			continue;
-
-		DBG("getting %s properties", "Services");
-
-		connman_get_properties_async(proxy, callback, store);
-	}
-
-	for (list = old_list; list; list = list->next) {
-		gchar *path = list->data;
-		GtkTreeIter iter;
-
-		DBG("old path %s", path);
-
-		if (get_iter_from_path(store, &iter, path) == TRUE)
-			gtk_tree_store_remove(store, &iter);
-
-		g_free(path);
-	}
-
-	g_slist_free(old_list);
-}
-
 static void service_properties(DBusGProxy *proxy, GHashTable *hash,
-					GError *error, gpointer user_data)
+							gpointer user_data)
 {
 	GtkTreeStore *store = user_data;
 	GValue *value;
@@ -468,7 +417,7 @@ static void service_properties(DBusGProxy *proxy, GHashTable *hash,
 
 	DBG("store %p proxy %p hash %p", store, proxy, hash);
 
-	if (error != NULL || hash == NULL)
+	if (hash == NULL)
 		goto done;
 
 	value = g_hash_table_lookup(hash, "Name");
@@ -572,11 +521,7 @@ static void manager_changed(DBusGProxy *proxy, const char *property,
 	if (property == NULL || value == NULL)
 		return;
 
-	if (g_str_equal(property, "Services") == TRUE)
-		property_update(store, value, service_properties);
-	else if (g_str_equal(property, "EnabledTechnologies") == TRUE)
-		enabled_technologies_changed(store, value);
-	else if (g_str_equal(property, "OfflineMode") == TRUE)
+	if (g_str_equal(property, "OfflineMode") == TRUE)
 		offline_mode_changed(store, value);
 }
 
@@ -591,23 +536,89 @@ static void manager_properties(DBusGProxy *proxy, GHashTable *hash,
 	if (error != NULL || hash == NULL)
 		return;
 
-	value = g_hash_table_lookup(hash, "Services");
-	if (value != NULL)
-		property_update(store, value, service_properties);
-
-	value = g_hash_table_lookup(hash, "EnabledTechnologies");
-	if (value != NULL)
-		enabled_technologies_properties(store, proxy, value);
-
 	value = g_hash_table_lookup(hash, "OfflineMode");
 	if (value != NULL)
 		offline_mode_properties(store, proxy, value);
+}
+
+static void manager_services(DBusGProxy *proxy, GPtrArray *array,
+					GError *error, gpointer user_data)
+{
+	int i;
+
+	DBG("proxy %p array %p", proxy, array);
+
+	if (error != NULL || array == NULL)
+		return;
+
+	for (i = 0; i < array->len; i++)
+	{
+		GValueArray *item = g_ptr_array_index(array, i);
+
+		DBusGObjectPath *path = (DBusGObjectPath *)g_value_get_boxed(g_value_array_get_nth(item, 0));
+		DBusGProxy *service_proxy = dbus_g_proxy_new_for_name(connection,
+						CONNMAN_SERVICE, path,
+						CONNMAN_SERVICE_INTERFACE);
+		if (service_proxy == NULL)
+			continue;
+
+		GHashTable *props = (GHashTable *)g_value_get_boxed(g_value_array_get_nth(item, 1));
+		service_properties(service_proxy, props, user_data);
+	}
+}
+
+static void manager_technologies(DBusGProxy *proxy, GPtrArray *array,
+					GError *error, gpointer user_data)
+{
+	int i;
+
+	DBG("proxy %p array %p", proxy, array);
+
+	if (error != NULL || array == NULL)
+		return;
+
+	for (i = 0; i < array->len; i++)
+	{
+		GValueArray *item = g_ptr_array_index(array, i);
+
+		DBusGObjectPath *path = (DBusGObjectPath *)g_value_get_boxed(g_value_array_get_nth(item, 0));
+		GHashTable *props = (GHashTable *)g_value_get_boxed(g_value_array_get_nth(item, 1));
+
+		tech_added(proxy, path, props, user_data);
+	}
+}
+
+static void services_added(DBusGProxy *proxy, GPtrArray *array,
+					gpointer user_data)
+{
+	DBG("proxy %p array %p", proxy, array);
+
+	manager_services(proxy, array, NULL, user_data);
+}
+
+static void services_removed(DBusGProxy *proxy, GPtrArray *array,
+					gpointer user_data)
+{
+	GtkTreeStore *store = user_data;
+	GtkTreeIter iter;
+	int i;
+
+	DBG("store %p proxy %p array %p", store, proxy, array);
+
+	for (i = 0; i < array->len; i++)
+	{
+		DBusGObjectPath *path = (DBusGObjectPath *)g_ptr_array_index(array, i);
+
+		if (get_iter_from_path(store, &iter, path))
+			gtk_tree_store_remove(store, &iter);
+	}
 }
 
 DBusGProxy *connman_dbus_create_manager(DBusGConnection *conn,
 						GtkTreeStore *store)
 {
 	DBusGProxy *proxy;
+	GType otype;
 
 	connection = dbus_g_connection_ref(conn);
 
@@ -621,9 +632,47 @@ DBusGProxy *connman_dbus_create_manager(DBusGConnection *conn,
 	dbus_g_proxy_connect_signal(proxy, "PropertyChanged",
 				G_CALLBACK(manager_changed), store, NULL);
 
+	otype = dbus_g_type_get_struct("GValueArray", DBUS_TYPE_G_OBJECT_PATH, DBUS_TYPE_G_DICTIONARY, G_TYPE_INVALID);
+	otype = dbus_g_type_get_collection("GPtrArray", otype);
+	dbus_g_object_register_marshaller(marshal_VOID__BOXED, G_TYPE_NONE, otype, G_TYPE_INVALID);
+
+	dbus_g_proxy_add_signal(proxy, "ServicesAdded",
+				otype, G_TYPE_INVALID);
+	dbus_g_proxy_connect_signal(proxy, "ServicesAdded",
+				G_CALLBACK(services_added), store, NULL);
+
+	otype = DBUS_TYPE_G_OBJECT_PATH_ARRAY;
+	dbus_g_object_register_marshaller(marshal_VOID__BOXED, G_TYPE_NONE, otype, G_TYPE_INVALID);
+
+	dbus_g_proxy_add_signal(proxy, "ServicesRemoved",
+				otype, G_TYPE_INVALID);
+	dbus_g_proxy_connect_signal(proxy, "ServicesRemoved",
+				G_CALLBACK(services_removed), store, NULL);
+
+	dbus_g_object_register_marshaller(marshal_VOID__STRING_BOXED, G_TYPE_NONE, DBUS_TYPE_G_OBJECT_PATH, DBUS_TYPE_G_DICTIONARY, G_TYPE_INVALID);
+	dbus_g_proxy_add_signal(proxy, "TechnologyAdded",
+				DBUS_TYPE_G_OBJECT_PATH, DBUS_TYPE_G_DICTIONARY, G_TYPE_INVALID);
+	dbus_g_proxy_connect_signal(proxy, "TechnologyAdded",
+				G_CALLBACK(tech_added), store, NULL);
+
+	dbus_g_object_register_marshaller(marshal_VOID__STRING, G_TYPE_NONE, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
+	dbus_g_proxy_add_signal(proxy, "TechnologyRemoved",
+				DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
+	dbus_g_proxy_connect_signal(proxy, "TechnologyRemoved",
+				G_CALLBACK(tech_removed), store, NULL);
+
+
 	DBG("getting manager properties");
 
 	connman_get_properties_async(proxy, manager_properties, store);
+
+	DBG("getting technologies");
+
+	connman_get_technologies_async(proxy, manager_technologies, store);
+
+	DBG("getting services");
+
+	connman_get_services_async(proxy, manager_services, store);
 
 	return proxy;
 }

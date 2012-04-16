@@ -40,18 +40,14 @@ static void status_update(GtkTreeModel *model, GtkTreePath  *path,
 	struct config_data *data = user_data;
 	guint type;
 	const char *name = NULL, *_name = NULL, *state = NULL;
-	gboolean ethernet_enabled;
-	gboolean wifi_enabled;
-	gboolean cellular_enabled;
+	gboolean powered;
 	gboolean offline_mode;
 
 	gtk_tree_model_get(model, iter,
 			CONNMAN_COLUMN_STATE, &state,
 			CONNMAN_COLUMN_NAME, &name,
 			CONNMAN_COLUMN_TYPE, &type,
-			CONNMAN_COLUMN_ETHERNET_ENABLED, &ethernet_enabled,
-			CONNMAN_COLUMN_WIFI_ENABLED, &wifi_enabled,
-			CONNMAN_COLUMN_CELLULAR_ENABLED, &cellular_enabled,
+			CONNMAN_COLUMN_POWERED, &powered,
 			CONNMAN_COLUMN_OFFLINEMODE, &offline_mode,
 			-1);
 
@@ -103,14 +99,14 @@ static void status_update(GtkTreeModel *model, GtkTreePath  *path,
 	} else if (type == CONNMAN_TYPE_LABEL_ETHERNET) {
 		if (!data->ethernet_button)
 			return;
-		if (ethernet_enabled)
+		if (powered)
 			gtk_button_set_label(GTK_BUTTON(data->ethernet_button), _("Disable"));
 		else
 			gtk_button_set_label(GTK_BUTTON(data->ethernet_button), _("Enable"));
 	} else if (type == CONNMAN_TYPE_LABEL_WIFI) {
 		if (!data->wifi_button)
 			return;
-		if (wifi_enabled) {
+		if (powered) {
 			gtk_button_set_label(GTK_BUTTON(data->wifi_button), _("Disable"));
 			gtk_widget_set_sensitive(data->scan_button, 1);
 		} else {
@@ -120,7 +116,7 @@ static void status_update(GtkTreeModel *model, GtkTreePath  *path,
 	} else if (type == CONNMAN_TYPE_LABEL_CELLULAR) {
 		if (!data->cellular_button)
 			return;
-		if (cellular_enabled)
+		if (powered)
 			gtk_button_set_label(GTK_BUTTON(data->cellular_button), _("Disable"));
 		else
 			gtk_button_set_label(GTK_BUTTON(data->cellular_button), _("Enable"));

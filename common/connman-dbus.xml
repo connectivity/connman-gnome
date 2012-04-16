@@ -5,11 +5,15 @@
     <method name="GetProperties">
       <arg type="a{sv}" direction="out"/>
     </method>
+    <method name="GetServices">
+      <arg type="a(oa{sv})" direction="out"/>
+    </method>
+    <method name="GetTechnologies">
+      <arg type="a(oa{sv})" direction="out"/>
+    </method>
     <method name="SetProperty">
       <arg type="s"/>
       <arg type="v"/>
-    </method>
-    <method name="ProposeScan">
     </method>
     <method name="Connect">
     </method>
@@ -17,14 +21,7 @@
     </method>
     <method name="Remove">
     </method>
-    <method name="RequestScan">
-      <arg type="s"/>
-    </method>
-    <method name="EnableTechnology">
-      <arg type="s"/>
-    </method>
-    <method name="DisableTechnology">
-      <arg type="s"/>
+    <method name="Scan">
     </method>
   </interface>
 </node>

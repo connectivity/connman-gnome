@@ -112,9 +112,7 @@ static void connman_client_init(ConnmanClient *client)
 				G_TYPE_STRING,  /* address */
 				G_TYPE_STRING,  /* netmask */
 				G_TYPE_STRING,  /* gateway */
-				G_TYPE_BOOLEAN, /* ethernet enabled */
-				G_TYPE_BOOLEAN, /* wifi enabled */
-				G_TYPE_BOOLEAN, /* cellular enabled */
+				G_TYPE_BOOLEAN, /* powered */
 				G_TYPE_BOOLEAN);/* offline */
 
 	g_object_set_data(G_OBJECT(priv->store),
@@ -288,7 +286,7 @@ void connman_client_set_powered(ConnmanClient *client, const gchar *device,
 	DBusGProxy *proxy;
 	GValue value = { 0 };
 
-	DBG("client %p", client);
+	DBG("client %p device %s", client, device);
 
 	if (device == NULL)
 		return;
@@ -300,62 +298,32 @@ void connman_client_set_powered(ConnmanClient *client, const gchar *device,
 	g_value_init(&value, G_TYPE_BOOLEAN);
 	g_value_set_boolean(&value, powered);
 
-	connman_set_property(proxy, "Powered", &value, NULL);
+	GError *error = NULL;
+	gboolean ret = connman_set_property(proxy, "Powered", &value, &error);
+	if( error )
+		fprintf (stderr, "error: %s\n", error->message);
 
 	g_object_unref(proxy);
 }
 
-static gboolean device_scan(GtkTreeModel *model, GtkTreePath *path,
-					GtkTreeIter *iter, gpointer user_data)
-{
-	DBusGProxy *proxy;
-
-	gtk_tree_model_get(model, iter, CONNMAN_COLUMN_PROXY, &proxy, -1);
-
-	if (proxy == NULL)
-		return FALSE;
-
-	if (g_str_equal(dbus_g_proxy_get_interface(proxy),
-					CONNMAN_SERVICE_INTERFACE) == FALSE)
-		return FALSE;
-
-	connman_propose_scan(proxy, NULL);
-
-	g_object_unref(proxy);
-
-	return FALSE;
-}
-
-void connman_client_propose_scan(ConnmanClient *client, const gchar *device)
+void connman_client_scan(ConnmanClient *client, const gchar *device,
+						connman_scan_reply callback, gpointer user_data)
 {
 	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
 	DBusGProxy *proxy;
 
-	DBG("client %p", client);
+	DBG("client %p device %s", client, device);
 
-	if (device == NULL) {
-		gtk_tree_model_foreach(GTK_TREE_MODEL(priv->store),
-							device_scan, NULL);
+	if (device == NULL)
 		return;
-	}
 
 	proxy = connman_dbus_get_proxy(priv->store, device);
 	if (proxy == NULL)
 		return;
 
-	connman_propose_scan(proxy, NULL);
+	connman_scan_async(proxy, callback, user_data);
 
 	g_object_unref(proxy);
-}
-
-void connman_client_request_scan(ConnmanClient *client, char *scantype,
-				connman_request_scan_reply callback, gpointer userdata)
-{
-	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
-
-	DBG("client %p", client);
-
-	connman_request_scan_async(priv->manager, scantype, callback, userdata);
 }
 
 gboolean connman_client_get_offline_status(ConnmanClient *client)
@@ -597,42 +565,6 @@ void connman_client_remove(ConnmanClient *client, const gchar *network)
 		return;
 
 	connman_remove(proxy, NULL);
-
-	g_object_unref(proxy);
-}
-
-void connman_client_enable_technology(ConnmanClient *client, const char *network,
-				      const gchar *technology)
-{
-	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
-	DBusGProxy *proxy;
-
-	if (network== NULL)
-		return;
-
-	proxy = connman_dbus_get_proxy(priv->store, network);
-	if (proxy == NULL)
-		return;
-
-	connman_enable_technology(proxy, technology, NULL);
-
-	g_object_unref(proxy);
-}
-
-void connman_client_disable_technology(ConnmanClient *client, const char *network,
-				      const gchar *technology)
-{
-	ConnmanClientPrivate *priv = CONNMAN_CLIENT_GET_PRIVATE(client);
-	DBusGProxy *proxy;
-
-	if (network == NULL)
-		return;
-
-	proxy = connman_dbus_get_proxy(priv->store, network);
-	if (proxy == NULL)
-		return;
-
-	connman_disable_technology(proxy, technology, NULL);
 
 	g_object_unref(proxy);
 }

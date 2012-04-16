@@ -69,7 +69,8 @@ void connman_client_set_powered(ConnmanClient *client, const gchar *device,
 							gboolean powered);
 gboolean connman_client_set_ipv4(ConnmanClient *client, const gchar *device,
 				struct ipv4_config *ipv4_config);
-void connman_client_propose_scan(ConnmanClient *client, const gchar *device);
+void connman_client_scan(ConnmanClient *client, const gchar *device,
+							connman_scan_reply callback, gpointer user_data);
 
 void connman_client_connect(ConnmanClient *client, const gchar *network);
 void connman_client_disconnect(ConnmanClient *client, const gchar *network);
@@ -89,8 +90,6 @@ void connman_client_set_callback(ConnmanClient *client,
 
 void connman_client_remove(ConnmanClient *client, const gchar *network);
 
-void connman_client_request_scan(ConnmanClient *client, char *scantype,
-				connman_request_scan_reply callback, gpointer userdata);
 gboolean connman_client_get_offline_status(ConnmanClient *client);
 void connman_client_set_offlinemode(ConnmanClient *client, gboolean status);
 
@@ -114,11 +113,8 @@ enum {
 	CONNMAN_COLUMN_ADDRESS,		/* G_TYPE_STRING  */
 	CONNMAN_COLUMN_NETMASK,		/* G_TYPE_STRING  */
 	CONNMAN_COLUMN_GATEWAY,		/* G_TYPE_STRING  */
-
-	CONNMAN_COLUMN_ETHERNET_ENABLED,/* G_TYPE_STRING  */
-	CONNMAN_COLUMN_WIFI_ENABLED,	/* G_TYPE_STRING  */
-	CONNMAN_COLUMN_CELLULAR_ENABLED,/* G_TYPE_STRING  */
-	CONNMAN_COLUMN_OFFLINEMODE,	/* G_TYPE_STRING  */
+	CONNMAN_COLUMN_POWERED,		/* G_TYPE_BOOLEAN  */
+	CONNMAN_COLUMN_OFFLINEMODE,	/* G_TYPE_BOOLEAN  */
 
 	_CONNMAN_NUM_COLUMNS
 };

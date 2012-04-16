@@ -96,9 +96,9 @@ static void switch_callback(GtkWidget *editable, gpointer user_data)
 	const gchar *label = gtk_button_get_label(GTK_BUTTON(data->wifi_button));
 
 	if (g_str_equal(label, "Disable"))
-		connman_client_disable_technology(data->client, data->device, "wifi");
+		connman_client_set_powered(data->client, data->device, FALSE);
 	else
-		connman_client_enable_technology(data->client, data->device, "wifi");
+		connman_client_set_powered(data->client, data->device, TRUE);
 }
 
 static void scan_reply_cb(DBusGProxy *proxy, GError *error,
@@ -115,7 +115,7 @@ static void scan_callback(GtkWidget *button, gpointer user_data)
 {
 	struct config_data *data = user_data;
 	gtk_widget_set_sensitive(button, 0);
-	connman_client_request_scan(data->client, "", scan_reply_cb, button);
+	connman_client_scan(data->client, data->device, scan_reply_cb, button);
 }
 
 void add_wifi_switch_button(GtkWidget *mainbox, GtkTreeIter *iter,
@@ -129,7 +129,7 @@ void add_wifi_switch_button(GtkWidget *mainbox, GtkTreeIter *iter,
 	gboolean wifi_enabled;
 
 	gtk_tree_model_get(data->model, iter,
-			CONNMAN_COLUMN_WIFI_ENABLED, &wifi_enabled,
+			CONNMAN_COLUMN_POWERED, &wifi_enabled,
 			-1);
 
 	vbox = gtk_vbox_new(TRUE, 0);

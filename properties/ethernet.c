@@ -59,9 +59,9 @@ static void switch_callback(GtkWidget *editable, gpointer user_data)
 	struct config_data *data = user_data;
 	const gchar *label = gtk_button_get_label(GTK_BUTTON(data->ethernet_button));
 	if (g_str_equal(label, "Disable"))
-		connman_client_disable_technology(data->client, data->device, "ethernet");
-	else if (g_str_equal(label, "Enable"))
-		connman_client_enable_technology(data->client, data->device, "ethernet");
+		connman_client_set_powered(data->client, data->device, FALSE);
+	else
+		connman_client_set_powered(data->client, data->device, TRUE);
 }
 
 void add_ethernet_switch_button(GtkWidget *mainbox, GtkTreeIter *iter,
@@ -75,7 +75,7 @@ void add_ethernet_switch_button(GtkWidget *mainbox, GtkTreeIter *iter,
 	gboolean ethernet_enabled;
 
 	gtk_tree_model_get(data->model, iter,
-			CONNMAN_COLUMN_ETHERNET_ENABLED, &ethernet_enabled,
+			CONNMAN_COLUMN_POWERED, &ethernet_enabled,
 			-1);
 
 	vbox = gtk_vbox_new(TRUE, 0);
