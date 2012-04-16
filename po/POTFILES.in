@@ -1,3 +1,4 @@
+applet/agent.c
 applet/main.c
 applet/connman-applet.desktop.in
 properties/main.c
