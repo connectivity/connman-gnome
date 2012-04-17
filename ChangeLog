@@ -1,3 +1,14 @@
+ver 0.6:
+	Add support for ConnMan 0.79 API.
+	Add support for cellular networks.
+	Add test application for the ConnMan manager interface.
+	Add test application for monitoring global changes.
+	Add support for moving services up and down.
+	Fix services IP configuration.
+	Fix D-Bus ConnMan service name.
+	Fix signal strength to icon index mapping.
+	Fix proxy unreferencing.
+
 ver 0.5:
 	Fix enumeration for WiMAX devices.
 	Fix input field length limitation for passphrases.
