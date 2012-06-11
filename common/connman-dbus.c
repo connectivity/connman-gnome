@@ -532,31 +532,60 @@ static void manager_properties(DBusGProxy *proxy, GHashTable *hash,
 		offline_mode_properties(store, proxy, value);
 }
 
-static void manager_services(DBusGProxy *proxy, GPtrArray *array,
-					GError *error, gpointer user_data)
+static void update_services(DBusGProxy *proxy, GPtrArray *added,
+                            GPtrArray *removed, gpointer user_data)
 {
+	GtkTreeStore *store;
+	GtkTreeIter iter;
 	unsigned int i;
 
-	DBG("proxy %p array %p", proxy, array);
+	DBG("proxy %p store %p added %p removed %p", proxy, user_data, added, removed);
 
-	if (error != NULL || array == NULL)
-		return;
+	store = GTK_TREE_STORE (user_data);
 
-	for (i = 0; i < array->len; i++)
-	{
-		GHashTable *props;
-		GValueArray *item = g_ptr_array_index(array, i);
-
-		DBusGObjectPath *path = (DBusGObjectPath *)g_value_get_boxed(g_value_array_get_nth(item, 0));
-		DBusGProxy *service_proxy = dbus_g_proxy_new_for_name(connection,
-						CONNMAN_SERVICE, path,
-						CONNMAN_SERVICE_INTERFACE);
-		if (service_proxy == NULL)
-			continue;
-
-		props = (GHashTable *)g_value_get_boxed(g_value_array_get_nth(item, 1));
-		service_properties(service_proxy, props, user_data);
+	/* Handle the removed services first as a micro-optimisation */
+	if (removed) {
+		for (i = 0; i < removed->len; i++)
+			{
+				DBusGObjectPath *path;
+				path = (DBusGObjectPath *)g_ptr_array_index(removed, i);
+				DBG("removed path %s", path);
+				if (get_iter_from_path(store, &iter, path))
+					gtk_tree_store_remove(store, &iter);
+			}
 	}
+
+	if (added) {
+		for (i = 0; i < added->len; i++)
+			{
+				GHashTable *props;
+				GValueArray *item = g_ptr_array_index(added, i);
+
+				DBusGObjectPath *path = (DBusGObjectPath *)g_value_get_boxed(g_value_array_get_nth(item, 0));
+				DBusGProxy *service_proxy = dbus_g_proxy_new_for_name(connection,
+										      CONNMAN_SERVICE, path,
+										      CONNMAN_SERVICE_INTERFACE);
+				DBG("added path %s", path);
+				if (service_proxy == NULL)
+					continue;
+
+				props = (GHashTable *)g_value_get_boxed(g_value_array_get_nth(item, 1));
+				service_properties(service_proxy, props, user_data);
+			}
+	}
+}
+
+static void manager_services(DBusGProxy *proxy, GPtrArray *services,
+                             GError *error, gpointer user_data)
+{
+	DBG("proxy %p store %p services %p", proxy, user_data, services);
+
+	if (error != NULL) {
+		g_message ("Error getting services: %s", error->message);
+		return;
+	}
+
+	update_services (proxy, services, NULL, user_data);
 }
 
 static void manager_technologies(DBusGProxy *proxy, GPtrArray *array,
@@ -580,37 +609,11 @@ static void manager_technologies(DBusGProxy *proxy, GPtrArray *array,
 	}
 }
 
-static void services_added(DBusGProxy *proxy, GPtrArray *array,
-					gpointer user_data)
-{
-	DBG("proxy %p array %p", proxy, array);
-
-	manager_services(proxy, array, NULL, user_data);
-}
-
-static void services_removed(DBusGProxy *proxy, GPtrArray *array,
-					gpointer user_data)
-{
-	GtkTreeStore *store = user_data;
-	GtkTreeIter iter;
-	unsigned int i;
-
-	DBG("store %p proxy %p array %p", store, proxy, array);
-
-	for (i = 0; i < array->len; i++)
-	{
-		DBusGObjectPath *path = (DBusGObjectPath *)g_ptr_array_index(array, i);
-
-		if (get_iter_from_path(store, &iter, path))
-			gtk_tree_store_remove(store, &iter);
-	}
-}
-
 DBusGProxy *connman_dbus_create_manager(DBusGConnection *conn,
 						GtkTreeStore *store)
 {
 	DBusGProxy *proxy;
-	GType otype;
+	GType changed_type, removed_type;
 
 	connection = dbus_g_connection_ref(conn);
 
@@ -624,22 +627,18 @@ DBusGProxy *connman_dbus_create_manager(DBusGConnection *conn,
 	dbus_g_proxy_connect_signal(proxy, "PropertyChanged",
 				G_CALLBACK(manager_changed), store, NULL);
 
-	otype = dbus_g_type_get_struct("GValueArray", DBUS_TYPE_G_OBJECT_PATH, DBUS_TYPE_G_DICTIONARY, G_TYPE_INVALID);
-	otype = dbus_g_type_get_collection("GPtrArray", otype);
-	dbus_g_object_register_marshaller(marshal_VOID__BOXED, G_TYPE_NONE, otype, G_TYPE_INVALID);
+	changed_type = dbus_g_type_get_struct("GValueArray", DBUS_TYPE_G_OBJECT_PATH, DBUS_TYPE_G_DICTIONARY, G_TYPE_INVALID);
+	changed_type = dbus_g_type_get_collection("GPtrArray", changed_type);
+        removed_type = DBUS_TYPE_G_OBJECT_PATH_ARRAY;
+	dbus_g_object_register_marshaller(marshal_VOID__BOXED_BOXED,
+                                          G_TYPE_NONE,
+                                          changed_type, removed_type,
+                                          G_TYPE_INVALID);
 
-	dbus_g_proxy_add_signal(proxy, "ServicesAdded",
-				otype, G_TYPE_INVALID);
-	dbus_g_proxy_connect_signal(proxy, "ServicesAdded",
-				G_CALLBACK(services_added), store, NULL);
-
-	otype = DBUS_TYPE_G_OBJECT_PATH_ARRAY;
-	dbus_g_object_register_marshaller(marshal_VOID__BOXED, G_TYPE_NONE, otype, G_TYPE_INVALID);
-
-	dbus_g_proxy_add_signal(proxy, "ServicesRemoved",
-				otype, G_TYPE_INVALID);
-	dbus_g_proxy_connect_signal(proxy, "ServicesRemoved",
-				G_CALLBACK(services_removed), store, NULL);
+	dbus_g_proxy_add_signal(proxy, "ServicesChanged",
+				changed_type, removed_type, G_TYPE_INVALID);
+	dbus_g_proxy_connect_signal(proxy, "ServicesChanged",
+				G_CALLBACK(update_services), store, NULL);
 
 	dbus_g_object_register_marshaller(marshal_VOID__STRING_BOXED, G_TYPE_NONE, DBUS_TYPE_G_OBJECT_PATH, DBUS_TYPE_G_DICTIONARY, G_TYPE_INVALID);
 	dbus_g_proxy_add_signal(proxy, "TechnologyAdded",
