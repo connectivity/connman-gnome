@@ -1,3 +1,6 @@
+ver 0.7
+	Add support for ConnMan 1.0 API.
+
 ver 0.6:
 	Add support for ConnMan 0.79 API.
 	Add support for cellular networks.
